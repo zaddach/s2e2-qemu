@@ -1720,6 +1720,8 @@ gen_intermediate_code_internal(MicroBlazeCPU *cpu, TranslationBlock *tb,
     gen_tb_start();
     do
     {
+        tcg_plugin_register_info(dc->pc, env, &tcg_ctx, tb);
+
 #if SIM_COMPAT
         if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)) {
             tcg_gen_movi_tl(cpu_SR[SR_PC], dc->pc);

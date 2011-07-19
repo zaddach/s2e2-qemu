@@ -1675,6 +1675,8 @@ static inline void gen_intermediate_code_internal(OpenRISCCPU *cpu,
     gen_tb_start();
 
     do {
+        tcg_plugin_register_info(ctx.pc, &cpu->env, &tcg_ctx, tb);
+
         check_breakpoint(cpu, dc);
         if (search_pc) {
             j = tcg_ctx.gen_opc_ptr - tcg_ctx.gen_opc_buf;

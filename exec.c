@@ -25,6 +25,7 @@
 #include "qemu-common.h"
 #include "cpu.h"
 #include "tcg.h"
+#include "tcg-plugin.h"
 #include "hw/hw.h"
 #include "hw/qdev.h"
 #include "qemu/osdep.h"

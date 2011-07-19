@@ -11305,6 +11305,8 @@ static inline void gen_intermediate_code_internal(PowerPCCPU *cpu,
     /* Set env in case of segfault during code fetch */
     while (ctx.exception == POWERPC_EXCP_NONE
             && tcg_ctx.gen_opc_ptr < gen_opc_end) {
+        tcg_plugin_register_info(ctx.nip, env, &tcg_ctx, tb);
+
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
                 if (bp->pc == ctx.nip) {

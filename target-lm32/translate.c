@@ -1094,6 +1094,8 @@ void gen_intermediate_code_internal(LM32CPU *cpu,
 
     gen_tb_start();
     do {
+        tcg_plugin_register_info(dc->pc, env, &tcg_ctx, tb);
+
         check_breakpoint(env, dc);
 
         if (search_pc) {

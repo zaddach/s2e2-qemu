@@ -3,6 +3,9 @@
 
 #include "qemu-common.h"
 
+extern uint64_t exit_code;
+extern uint64_t exit_addr;
+
 #ifdef NEED_CPU_H
 /* Disassemble this for me please... (debugging). */
 void disas(FILE *out, void *code, unsigned long size);
@@ -14,6 +17,7 @@ void monitor_disas(Monitor *mon, CPUArchState *env,
 
 /* Look up symbol for debugging purpose.  Returns "" if unknown. */
 const char *lookup_symbol(target_ulong orig_addr);
+bool lookup_symbol2(target_ulong orig_addr, const char **symbol, const char **filename);
 #endif
 
 struct syminfo;
@@ -34,6 +38,7 @@ struct syminfo {
       struct elf64_sym *elf64;
     } disas_symtab;
     const char *disas_strtab;
+    const char *filename;
     struct syminfo *next;
 };
 

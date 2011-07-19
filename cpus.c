@@ -45,6 +45,10 @@
 #include "qemu/compatfd.h"
 #endif
 
+#ifdef CONFIG_TCG_PLUGIN
+#include "tcg-plugin.h"
+#endif /* CONFIG_TCG_PLUGIN */
+
 #ifdef CONFIG_LINUX
 
 #include <sys/prctl.h>
@@ -557,6 +561,7 @@ static void cpu_handle_guest_debug(CPUState *cpu)
     gdb_set_stop_cpu(cpu);
     qemu_system_debug_request();
     cpu->stopped = true;
+    tcg_plugin_cpus_stopped();
 }
 
 static void cpu_signal(int sig)
@@ -1098,6 +1103,8 @@ void pause_all_vcpus(void)
             qemu_cpu_kick(cpu);
         }
     }
+
+    tcg_plugin_cpus_stopped();
 }
 
 void cpu_resume(CPUState *cpu)

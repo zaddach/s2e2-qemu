@@ -182,6 +182,7 @@ int loader_exec(int fdexec, const char *filename, char **argv, char **envp,
 
 int load_elf_binary(struct linux_binprm *bprm, struct image_info *info);
 int load_flt_binary(struct linux_binprm *bprm, struct image_info *info);
+void load_symbols(int fd, abi_ulong load_bias);
 
 abi_long memcpy_to_target(abi_ulong dest, const void *src,
                           unsigned long len);

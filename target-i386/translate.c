@@ -7979,6 +7979,8 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
 
     gen_tb_start();
     for(;;) {
+        tcg_plugin_register_info(pc_ptr, env, &tcg_ctx, tb);
+
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
                 if (bp->pc == pc_ptr &&

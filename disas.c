@@ -15,6 +15,12 @@ typedef struct CPUDebug {
 /* Filled in by elfload.c.  Simplistic, but will do for now. */
 struct syminfo *syminfos = NULL;
 
+/* On ARM, semi-hosting has no room for application exit code. To work
+   around this, when we start executing exit(), we take note of its
+      parameter, which will be used as return code.  */
+      uint64_t exit_code = 0;
+      uint64_t exit_addr = 0;
+
 /* Get LENGTH bytes from info's buffer, at target address memaddr.
    Transfer them to myaddr.  */
 int
@@ -413,6 +419,24 @@ const char *lookup_symbol(target_ulong orig_addr)
     }
 
     return symbol;
+}
+
+/* Look up symbol/filename for debugging purpose.  */
+bool lookup_symbol2(target_ulong orig_addr, const char **symbol, const char **filename)
+{
+    struct syminfo *s;
+
+    for (s = syminfos; s; s = s->next) {
+        *symbol = s->lookup_symbol(s, orig_addr);
+        if (*symbol[0] != '\0') {
+            *filename = s->filename;
+            return true;
+        }
+    }
+
+    *symbol = "";
+    *filename = "";
+    return false;
 }
 
 #if !defined(CONFIG_USER_ONLY)

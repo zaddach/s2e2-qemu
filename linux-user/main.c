@@ -33,6 +33,7 @@
 #include "qemu/timer.h"
 #include "qemu/envlist.h"
 #include "elf.h"
+#include "tcg-plugin.h"
 
 char *exec_path;
 
@@ -3829,6 +3830,7 @@ int main(int argc, char **argv, char **envp)
     int i;
     int ret;
     int execfd;
+    const char *plugin_filename = NULL;
 
     module_call_init(MODULE_INIT_QOM);
 
@@ -3859,6 +3861,11 @@ int main(int argc, char **argv, char **envp)
 #endif
 
     optind = parse_args(argc, argv);
+
+    plugin_filename = plugin_filename ?: getenv("TCG_PLUGIN");
+    if (plugin_filename) {
+        tcg_plugin_load(plugin_filename);
+    }
 
     /* Zero out regs */
     memset(regs, 0, sizeof(struct target_pt_regs));

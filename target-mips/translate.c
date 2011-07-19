@@ -15677,6 +15677,8 @@ gen_intermediate_code_internal(MIPSCPU *cpu, TranslationBlock *tb,
     LOG_DISAS("\ntb %p idx %d hflags %04x\n", tb, ctx.mem_idx, ctx.hflags);
     gen_tb_start();
     while (ctx.bstate == BS_NONE) {
+        tcg_plugin_register_info(ctx.pc, env, &tcg_ctx, tb);
+
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
                 if (bp->pc == ctx.pc) {

@@ -112,7 +112,6 @@ static int tcg_target_const_match(tcg_target_long val, TCGType type,
 static void tcg_out_tb_init(TCGContext *s);
 static void tcg_out_tb_finalize(TCGContext *s);
 
-
 TCGOpDef tcg_op_defs[] = {
 #define DEF(s, oargs, iargs, cargs, flags) { #s, oargs, iargs, cargs, iargs + oargs + cargs, flags },
 #include "tcg-opc.h"
@@ -704,14 +703,12 @@ void tcg_gen_callN(TCGContext *s, void *func, TCGArg ret,
                    int nargs, TCGArg *args)
 {
     int i, real_args, nb_rets;
-    unsigned sizemask, flags;
-    TCGArg *nparam;
-    TCGHelperInfo *info;
-
-    info = g_hash_table_lookup(s->helpers, (gpointer)func);
-    flags = info->flags;
-    sizemask = info->sizemask;
-
+    unsigned sizemask = 0, flags = 0;
+    TCGArg *nparam = NULL;
+    
+    uint16_t *opcode = NULL;
+    TCGArg *opargs = NULL;
+    
 #if defined(__sparc__) && !defined(__arch64__) \
     && !defined(CONFIG_TCG_INTERPRETER)
     /* We have 64-bit values in one register, but need to pass as two
@@ -757,6 +754,9 @@ void tcg_gen_callN(TCGContext *s, void *func, TCGArg ret,
         }
     }
 #endif /* TCG_TARGET_EXTEND_ARGS */
+
+    opcode = s->gen_opc_ptr;
+    opargs = s->gen_opparam_ptr;
 
     *s->gen_opc_ptr++ = INDEX_op_call;
     nparam = s->gen_opparam_ptr++;
@@ -868,6 +868,7 @@ void tcg_gen_callN(TCGContext *s, void *func, TCGArg ret,
         }
     }
 #endif /* TCG_TARGET_EXTEND_ARGS */
+    TCG_PLUGIN_POST_GEN_OPC3(opcode, opargs, (s->gen_opparam_ptr - opargs) / sizeof(TCGArg));
 }
 
 #if TCG_TARGET_REG_BITS == 32
@@ -946,6 +947,7 @@ static inline TCGMemOp tcg_canonicalize_memop(TCGMemOp op, bool is64, bool st)
 
 void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
 {
+    TCGArg *opargs  = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 0);
 
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_ld_i32;
@@ -953,10 +955,13 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+    
+    TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
 void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
 {
+    TCGArg *opargs = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 1);
 
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_st_i32;
@@ -964,10 +969,14 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+    
+    TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
 void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
 {
+    TCGArg *opargs  = NULL;
+
     memop = tcg_canonicalize_memop(memop, 1, 0);
 
 #if TCG_TARGET_REG_BITS == 32
@@ -987,10 +996,13 @@ void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+    TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
 void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
 {
+    TCGArg *opargs  = NULL;
+
     memop = tcg_canonicalize_memop(memop, 1, 1);
 
 #if TCG_TARGET_REG_BITS == 32
@@ -1005,6 +1017,8 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+
+    TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
 static void tcg_reg_alloc_start(TCGContext *s)

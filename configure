@@ -260,6 +260,7 @@ vhost_scsi="no"
 kvm="no"
 rdma=""
 gprof="no"
+tcg_plugin="no"
 debug_tcg="no"
 debug="no"
 strip_opt="yes"
@@ -851,6 +852,10 @@ for opt do
   ;;
   --block-drv-ro-whitelist=*) block_drv_ro_whitelist=`echo "$optarg" | sed -e 's/,/ /g'`
   ;;
+  --enable-tcg-plugin) tcg_plugin="yes"
+  ;;
+  --disable-tcg-plugin) tcg_plugin="no"
+  ;;
   --enable-debug-tcg) debug_tcg="yes"
   ;;
   --disable-debug-tcg) debug_tcg="no"
@@ -1317,6 +1322,8 @@ Advanced options (experts only):
   --disable-rdma           disable RDMA-based migration support
   --enable-rdma            enable RDMA-based migration support
   --enable-tcg-interpreter enable TCG with bytecode interpreter (TCI)
+  --enable-tcg-plugin      enable TCG plugin support
+  --disable-tcg-plugin     disable TCG plugin support (default)
   --enable-system          enable all system emulation targets
   --disable-system         disable all system emulation targets
   --enable-user            enable supported user emulation targets
@@ -4145,6 +4152,7 @@ echo "module directory  `eval echo $qemu_moddir`"
 echo "libexec directory `eval echo $libexecdir`"
 echo "include directory `eval echo $includedir`"
 echo "config directory  `eval echo $sysconfdir`"
+echo "plugin directory  `eval echo $libexecdir`"
 if test "$mingw32" = "no" ; then
 echo "local state directory   `eval echo $local_statedir`"
 echo "Manual directory  `eval echo $mandir`"
@@ -4172,6 +4180,7 @@ echo "module support    $modules"
 echo "host CPU          $cpu"
 echo "host big endian   $bigendian"
 echo "target list       $target_list"
+echo "tcg plugin support $tcg_plugin"
 echo "tcg debug enabled $debug_tcg"
 echo "gprof enabled     $gprof"
 echo "sparse enabled    $sparse"
@@ -4297,6 +4306,11 @@ echo "libs_softmmu=$libs_softmmu" >> $config_host_mak
 
 echo "ARCH=$ARCH" >> $config_host_mak
 
+if test "$tcg_plugin" = "yes" ; then
+  echo "CONFIG_TCG_PLUGIN=y" >> $config_host_mak
+  LIBS="-ldl $LIBS"
+  LDFLAGS="-rdynamic $LDFLAGS"
+fi
 if test "$debug_tcg" = "yes" ; then
   echo "CONFIG_DEBUG_TCG=y" >> $config_host_mak
 fi
@@ -5247,6 +5261,7 @@ DIRS="$DIRS fsdev"
 DIRS="$DIRS pc-bios/optionrom pc-bios/spapr-rtas pc-bios/s390-ccw"
 DIRS="$DIRS roms/seabios roms/vgabios"
 DIRS="$DIRS qapi-generated"
+DIRS="$DIRS tcg tcg/plugins"
 FILES="Makefile tests/tcg/Makefile qdict-test-data.txt"
 FILES="$FILES tests/tcg/cris/Makefile tests/tcg/cris/.gdbinit"
 FILES="$FILES tests/tcg/lm32/Makefile tests/tcg/xtensa/Makefile po/Makefile"

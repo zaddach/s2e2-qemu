@@ -10972,6 +10972,8 @@ static inline void gen_intermediate_code_internal(ARMCPU *cpu,
         store_cpu_field(tmp, condexec_bits);
       }
     do {
+        tcg_plugin_register_info(dc->pc, env, &tcg_ctx, tb);
+
 #ifdef CONFIG_USER_ONLY
         /* Intercept jump to the magic kernel page.  */
         if (dc->pc >= 0xffff0000) {

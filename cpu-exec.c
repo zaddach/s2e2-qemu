@@ -607,6 +607,15 @@ int cpu_exec(CPUArchState *env)
                 spin_lock(&tcg_ctx.tb_ctx.tb_lock);
                 have_tb_lock = true;
                 tb = tb_find_fast(env);
+
+#if defined(TARGET_ARM)
+                /* When we reach exit(), make a copy of the
+                   application exit code.  */
+                if (tb->pc == exit_addr) {
+                    exit_code = env->regs[0];
+                }
+#endif
+
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
                 if (tcg_ctx.tb_ctx.tb_invalidated_flag) {

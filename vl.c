@@ -2903,6 +2903,13 @@ out:
     }
     return 0;
 }
+/* Provide a forward declaration since "tcg/tcg-plugin.h" can't be
+ * included here. */
+#ifdef CONFIG_TCG_PLUGIN
+extern void tcg_plugin_load(const char *);
+#else
+#define tcg_plugin_load(a)
+#endif
 
 int main(int argc, char **argv, char **envp)
 {
@@ -2931,6 +2938,7 @@ int main(int argc, char **argv, char **envp)
 #endif
     bool defconfig = true;
     bool userconfig = true;
+    const char *plugin_filename = NULL;
     const char *log_mask = NULL;
     const char *log_file = NULL;
     GMemVTable mem_trace = {
@@ -3829,6 +3837,11 @@ int main(int argc, char **argv, char **envp)
                     tcg_tb_size = 0;
                 }
                 break;
+#ifdef CONFIG_TCG_PLUGIN
+            case QEMU_OPTION_tcg_plugin:
+                plugin_filename = optarg;
+                break;
+#endif /* CONFIG_TCG_PLUGIN */
             case QEMU_OPTION_icount:
                 icount_option = optarg;
                 break;
@@ -4074,6 +4087,10 @@ int main(int argc, char **argv, char **envp)
         exit(1);
     }
 
+    plugin_filename = plugin_filename ?: getenv("TCG_PLUGIN");
+    if (plugin_filename) {
+        tcg_plugin_load(plugin_filename);
+    }
     /*
      * Get the default machine options from the machine if it is not already
      * specified either by the configuration file or by the command line.
@@ -4082,6 +4099,13 @@ int main(int argc, char **argv, char **envp)
         qemu_opts_set_defaults(qemu_find_opts("machine"),
                                machine_class->default_machine_opts, 0);
     }
+    
+#ifdef CONFIG_TCG_PLUGIN
+    plugin_filename = plugin_filename ?: getenv("TCG_PLUGIN");
+    if (plugin_filename) {
+        tcg_plugin_load(plugin_filename);
+    }
+#endif /* CONFIG_TCG_PLUGIN */
 
     qemu_opts_foreach(qemu_find_opts("device"), default_driver_check, NULL, 0);
     qemu_opts_foreach(qemu_find_opts("global"), default_driver_check, NULL, 0);

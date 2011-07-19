@@ -63,7 +63,6 @@ $(QEMU_PROG).stp: $(SRC_PATH)/trace-events
 		--target-name=$(TARGET_NAME) \
 		--target-type=$(TARGET_TYPE) \
 		< $< > $@,"  GEN   $(TARGET_DIR)$(QEMU_PROG).stp")
-
 else
 stap:
 endif
@@ -77,6 +76,7 @@ all: $(PROGS) stap
 # cpu emulator library
 obj-y = exec.o translate-all.o cpu-exec.o
 obj-y += tcg/tcg.o tcg/optimize.o
+obj-$(CONFIG_TCG_PLUGIN) += tcg/tcg-plugin.o
 obj-$(CONFIG_TCG_INTERPRETER) += tci.o
 obj-$(CONFIG_TCG_INTERPRETER) += disas/tci.o
 obj-y += fpu/softfloat.o
@@ -154,6 +154,34 @@ all-obj-y := $(obj-y)
 
 block-obj-y :=
 common-obj-y :=
+
+#########################################################
+# TCG plugin targets
+
+ifdef CONFIG_TCG_PLUGIN
+
+# This includes the tcg plugin code into the Qemu executable
+all-obj-y += tcg/tcg-plugin.o
+
+tcg/tcg-plugin.o: QEMU_CFLAGS += -DEMULATION_MODE=\"$(TARGET_TYPE)\"
+
+
+# This builds the tcg plugin shared libraries
+TCG_PLUGINS := $(patsubst $(SRC_PATH)/tcg/plugins/%.c,%.tcgplugin,$(wildcard $(SRC_PATH)/tcg/plugins/*.c))
+all: $(TCG_PLUGINS)
+
+# Create directories and dependency files for plugin source
+TCG_PLUGIN_OBJS := tcg/ tcg/plugins/ $(patsubst $(SRC_PATH)/tcg/plugins/%.c,tcg/plugins/%.o,$(wildcard $(SRC_PATH)/tcg/plugins/*.c))
+dummy := $(call unnest-vars,, TCG_PLUGIN_OBJS)
+
+tcg/plugins/%.o: QEMU_CFLAGS += -fno-PIE -fPIC -DEMULATION_MODE=\"$(TARGET_TYPE)\"
+
+%.tcgplugin: LDFLAGS := $(filter-out -pie,$(LDFLAGS)) -shared
+%.tcgplugin: tcg/plugins/%.o
+	$(call LINK,$^)
+
+endif # CONFIG_TCG_PLUGIN
+
 include $(SRC_PATH)/Makefile.objs
 dummy := $(call unnest-vars,.., \
                block-obj-y \
@@ -176,12 +204,19 @@ hmp-commands.h: $(SRC_PATH)/hmp-commands.hx
 qmp-commands-old.h: $(SRC_PATH)/qmp-commands.hx
 	$(call quiet-command,sh $(SRC_PATH)/scripts/hxtool -h < $< > $@,"  GEN   $(TARGET_DIR)$@")
 
+%.tcgplugin: tcg/ tcg/plugins/ tcg/plugins/%.o
+	echo "I'm so happy"
+	$(LINK, $^)
+
 clean:
 	rm -f *.a *~ $(PROGS)
 	rm -f $(shell find . -name '*.[od]')
 	rm -f hmp-commands.h qmp-commands-old.h gdbstub-xml.c
 ifdef CONFIG_TRACE_SYSTEMTAP
 	rm -f *.stp
+endif
+ifdef CONFIG_TCG_PLUGIN
+	rm -f $(TCG_PLUGINS)
 endif
 
 install: all
@@ -191,6 +226,10 @@ endif
 ifdef CONFIG_TRACE_SYSTEMTAP
 	$(INSTALL_DIR) "$(DESTDIR)$(qemu_datadir)/../systemtap/tapset"
 	$(INSTALL_DATA) $(QEMU_PROG).stp-installed "$(DESTDIR)$(qemu_datadir)/../systemtap/tapset/$(QEMU_PROG).stp"
+endif
+ifdef CONFIG_TCG_PLUGIN
+	$(INSTALL_DIR) "$(DESTDIR)$(libexecdir)/$(TARGET_ARCH)/$(TARGET_TYPE)"
+	$(INSTALL_PROG) $(TCG_PLUGINS) "$(DESTDIR)$(libexecdir)/$(TARGET_ARCH)/$(TARGET_TYPE)"
 endif
 
 GENERATED_HEADERS += config-target.h

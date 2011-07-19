@@ -59,6 +59,7 @@
 #include "exec/cputlb.h"
 #include "translate-all.h"
 #include "qemu/timer.h"
+#include "tcg-plugin.h"
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -156,7 +157,9 @@ int cpu_gen_code(CPUArchState *env, TranslationBlock *tb, int *gen_code_size_ptr
 #endif
     tcg_func_start(s);
 
+    tcg_plugin_before_gen_tb(env, s, tb);
     gen_intermediate_code(env, tb);
+    tcg_plugin_after_gen_tb(env, s, tb);
 
     /* generate machine code */
     gen_code_buf = tb->tc_ptr;
@@ -213,7 +216,9 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
 #endif
     tcg_func_start(s);
 
+    tcg_plugin_before_gen_tb(env, s, tb);
     gen_intermediate_code_pc(env, tb);
+    tcg_plugin_after_gen_tb(env, s, tb);
 
     if (use_icount) {
         /* Reset the cycle counter to the start of the block.  */

@@ -1916,6 +1916,8 @@ static inline void gen_intermediate_code_internal(UniCore32CPU *cpu,
 
     gen_tb_start();
     do {
+        tcg_plugin_register_info(dc->pc, env, &tcg_ctx, tb);
+
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
                 if (bp->pc == dc->pc) {

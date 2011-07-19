@@ -4768,6 +4768,8 @@ static inline void gen_intermediate_code_internal(S390CPU *cpu,
     gen_tb_start();
 
     do {
+        tcg_plugin_register_info(dc.pc, env, &tcg_ctx, tb);
+
         if (search_pc) {
             j = tcg_ctx.gen_opc_ptr - tcg_ctx.gen_opc_buf;
             if (lj < j) {
