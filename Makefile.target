@@ -160,11 +160,7 @@ common-obj-y :=
 
 ifdef CONFIG_TCG_PLUGIN
 
-# This includes the tcg plugin code into the Qemu executable
-all-obj-y += tcg/tcg-plugin.o
-
 tcg/tcg-plugin.o: QEMU_CFLAGS += -DEMULATION_MODE=\"$(TARGET_TYPE)\"
-
 
 # This builds the tcg plugin shared libraries
 TCG_PLUGINS := $(patsubst $(SRC_PATH)/tcg/plugins/%.c,%.tcgplugin,$(wildcard $(SRC_PATH)/tcg/plugins/*.c))
@@ -176,7 +172,7 @@ dummy := $(call unnest-vars,, TCG_PLUGIN_OBJS)
 
 tcg/plugins/%.o: QEMU_CFLAGS += -fno-PIE -fPIC -DEMULATION_MODE=\"$(TARGET_TYPE)\"
 
-%.tcgplugin: LDFLAGS := $(filter-out -pie,$(LDFLAGS)) -shared
+%.tcgplugin: LDFLAGS := $(filter-out -pie,$(LDFLAGS)) -shared -Wl,-undefined,dynamic_lookup
 %.tcgplugin: tcg/plugins/%.o
 	$(call LINK,$^)
 
