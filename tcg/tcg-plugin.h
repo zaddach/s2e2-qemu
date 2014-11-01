@@ -135,7 +135,7 @@ struct TCGPluginInterface
     bool is_generic;
     const CPUArchState *env;
     const TranslationBlock *tb;
-    const TCGContext *tcg_ctx;
+    TCGContext *tcg_ctx;
 
     /* Plugin's callbacks.  */
     tpi_cpus_stopped_t cpus_stopped;
