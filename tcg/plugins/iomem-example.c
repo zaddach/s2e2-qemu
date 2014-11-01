@@ -91,7 +91,6 @@ static void after_gen_opc(const TCGPluginInterface *tpi, const TPIOpCode *tpi_op
         return;
     }
 
-    int sizemask = 0;
     TCGArg args[3];
 
     TCGv_i64 tcgv_ret  = tcg_temp_new_i64();
@@ -101,12 +100,7 @@ static void after_gen_opc(const TCGPluginInterface *tpi, const TPIOpCode *tpi_op
     args[1] = tpi_opcode->opargs[0];
     args[2] = GET_TCGV_I32(tcgv_size);
 
-    dh_sizemask(i64, 0);
-    dh_sizemask(i64, 1);
-    dh_sizemask(i64, 2);
-    dh_sizemask(i32, 3);
-
-    tcg_gen_helperN(after_exec_opc, 0, sizemask, GET_TCGV_I64(tcgv_ret), 3, args);
+    tcg_gen_callN(tpi->tcg_ctx, after_exec_opc, GET_TCGV_I64(tcgv_ret), 3, args);
 
 #if TCG_TARGET_REG_BITS == 64
     tcg_gen_mov_i64(MAKE_TCGV_I64(tpi_opcode->opargs[0]), tcgv_ret);
