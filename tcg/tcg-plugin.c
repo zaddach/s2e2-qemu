@@ -46,6 +46,15 @@
 /* Interface for the TCG plugin.  */
 static TCGPluginInterface tpi;
 
+static void helper_tcg_plugin_pre_tb(uint64_t address, uint64_t info, uint64_t data1, uint64_t data2);
+
+static void gen_helper_tcg_plugin_pre_tb(TCGContext *s, TCGv_i64 arg1,
+		TCGv_i64 arg2, TCGv_i64 arg3, TCGv_i64 arg4)  {
+	TCGArg args[4] = {
+			GET_TCGV_I64(arg1), GET_TCGV_I64(arg2), GET_TCGV_I64(arg3), GET_TCGV_I64(arg4)};
+	tcg_gen_callN(s, (void *)helper_tcg_plugin_pre_tb, dh_retvar(void), 4, args);
+}
+
 /* Return true if a plugin was loaded with success.  */
 bool tcg_plugin_enabled(void)
 {
@@ -270,6 +279,14 @@ error:
     return;
 }
 
+void tcg_plugin_register_helpers(TCGContext *s)
+{
+	if (tpi.register_helpers)  {
+		tpi.tcg_ctx = s;
+		tpi.register_helpers(&tpi);
+	}
+}
+
 /* Hook called once all CPUs are stopped/paused.  */
 void tcg_plugin_cpus_stopped(void)
 {
@@ -330,7 +347,7 @@ void tcg_plugin_before_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock
         tb_data2 = s->gen_opparam_ptr + 1;
         data2 = tcg_const_i64(0);
 
-        gen_helper_tcg_plugin_pre_tb(address, info, data1, data2);
+        gen_helper_tcg_plugin_pre_tb(s, address, info, data1, data2);
 
         tcg_temp_free_i64(data2);
         tcg_temp_free_i64(data1);

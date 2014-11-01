@@ -369,6 +369,8 @@ void tcg_context_init(TCGContext *s)
                             (gpointer)&all_helpers[i]);
     }
 
+    tcg_plugin_register_helpers(s);
+
     tcg_target_init(s);
 }
 

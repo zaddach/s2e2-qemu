@@ -7,7 +7,7 @@
 
 #include "tcg-plugin-api.h"
 
-const char *plgapi_get_arch(void)
+const char *plgapi_get_arch_name(void)
 {
 	return TARGET_NAME;
 }
@@ -30,6 +30,17 @@ void plgapi_register_helper(TCGContext *s, void *func, const char *name, unsigne
 
 	g_hash_table_insert(s->helpers, (gpointer) func,
 	                            (gpointer) helper_info);
+}
+
+const char *plgapi_get_helper_name(TCGContext *s, void *helper)
+{
+	TCGHelperInfo *info = g_hash_table_lookup(s->helpers, helper);
+
+	if (!info)  {
+		return NULL;
+	}
+
+	return info->name;
 }
 
 
