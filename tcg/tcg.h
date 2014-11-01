@@ -755,7 +755,7 @@ TCGv_i64 tcg_const_local_i64(int64_t val);
 
 static inline ptrdiff_t tcg_ptr_byte_diff(void *a, void *b)
 {
-    return a - b;
+    return (uint8_t *) a - (uint8_t *) b;
 }
 
 /**

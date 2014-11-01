@@ -560,7 +560,7 @@ int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,
     }
     wp = g_malloc(sizeof(*wp));
 
-    wp->vaddr = addr;
+    wp->virtaddr = addr;
     wp->len_mask = len_mask;
     wp->flags = flags;
 
@@ -586,7 +586,7 @@ int cpu_watchpoint_remove(CPUState *cpu, vaddr addr, vaddr len,
     CPUWatchpoint *wp;
 
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
-        if (addr == wp->vaddr && len_mask == wp->len_mask
+        if (addr == wp->virtaddr && len_mask == wp->len_mask
                 && flags == (wp->flags & ~BP_WATCHPOINT_HIT)) {
             cpu_watchpoint_remove_by_ref(cpu, wp);
             return 0;
@@ -600,7 +600,7 @@ void cpu_watchpoint_remove_by_ref(CPUState *cpu, CPUWatchpoint *watchpoint)
 {
     QTAILQ_REMOVE(&cpu->watchpoints, watchpoint, entry);
 
-    tlb_flush_page(cpu, watchpoint->vaddr);
+    tlb_flush_page(cpu, watchpoint->virtaddr);
 
     g_free(watchpoint);
 }
@@ -827,7 +827,7 @@ hwaddr memory_region_section_get_iotlb(CPUState *cpu,
     /* Make accesses to pages with watchpoints go via the
        watchpoint trap routines.  */
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
-        if (vaddr == (wp->vaddr & TARGET_PAGE_MASK)) {
+        if (vaddr == (wp->virtaddr & TARGET_PAGE_MASK)) {
             /* Avoid trapping reads of pages with a write breakpoint. */
             if ((prot & PAGE_WRITE) || (wp->flags & BP_MEM_READ)) {
                 iotlb = PHYS_SECTION_WATCH + paddr;
@@ -1609,8 +1609,8 @@ static void check_watchpoint(int offset, int len_mask, int flags)
     }
     vaddr = (cpu->mem_io_vaddr & TARGET_PAGE_MASK) + offset;
     QTAILQ_FOREACH(wp, &cpu->watchpoints, entry) {
-        if ((vaddr == (wp->vaddr & len_mask) ||
-             (vaddr & wp->len_mask) == wp->vaddr) && (wp->flags & flags)) {
+        if ((vaddr == (wp->virtaddr & len_mask) ||
+             (vaddr & wp->len_mask) == wp->virtaddr) && (wp->flags & flags)) {
             wp->flags |= BP_WATCHPOINT_HIT;
             if (!cpu->watchpoint_hit) {
                 cpu->watchpoint_hit = wp;

@@ -168,7 +168,7 @@ typedef struct CPUBreakpoint {
 } CPUBreakpoint;
 
 typedef struct CPUWatchpoint {
-    vaddr vaddr;
+    vaddr virtaddr;
     vaddr len_mask;
     int flags; /* BP_* */
     QTAILQ_ENTRY(CPUWatchpoint) entry;
@@ -420,25 +420,25 @@ void cpu_reset(CPUState *cpu);
 
 /**
  * cpu_class_by_name:
- * @typename: The CPU base type.
+ * @type_name: The CPU base type.
  * @cpu_model: The model string without any parameters.
  *
  * Looks up a CPU #ObjectClass matching name @cpu_model.
  *
  * Returns: A #CPUClass or %NULL if not matching class is found.
  */
-ObjectClass *cpu_class_by_name(const char *typename, const char *cpu_model);
+ObjectClass *cpu_class_by_name(const char *type_name, const char *cpu_model);
 
 /**
  * cpu_generic_init:
- * @typename: The CPU base type.
+ * @type_name: The CPU base type.
  * @cpu_model: The model string including optional parameters.
  *
  * Instantiates a CPU, processes optional parameters and realizes the CPU.
  *
  * Returns: A #CPUState or %NULL if an error occurred.
  */
-CPUState *cpu_generic_init(const char *typename, const char *cpu_model);
+CPUState *cpu_generic_init(const char *type_name, const char *cpu_model);
 
 /**
  * cpu_has_work:
