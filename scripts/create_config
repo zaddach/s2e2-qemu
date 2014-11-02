@@ -96,6 +96,10 @@ case $line in
     target_name=${line#*=}
     echo "#define TARGET_NAME \"$target_name\""
     ;;
+ TARGET_EMULATION_MODE=*)
+    target_emulation_mode=${line#*=}
+    echo "#define TARGET_EMULATION_MODE \"$target_emulation_mode\""
+    ;;
  TARGET_DIRS=*)
     # do nothing
     ;;

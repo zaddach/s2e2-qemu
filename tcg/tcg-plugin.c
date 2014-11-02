@@ -80,7 +80,7 @@ void tcg_plugin_load(const char *name)
     /* Check if "name" refers to an installed plugin (short form).  */
     if (name[0] != '.' && name[0] != '/') {
         const char *format = CONFIG_QEMU_HELPERDIR "/" TARGET_NAME
-            "/" EMULATION_MODE "/tcg-plugin-%s.so";
+            "/" TARGET_EMULATION_MODE "/tcg-plugin-%s.so";
         size_t size = strlen(format) + strlen(name);
         int status;
 
@@ -235,10 +235,10 @@ void tcg_plugin_load(const char *name)
                 "(%s != %s)\n", tpi.guest, TARGET_NAME);
     }
 
-    if (strcmp(tpi.mode, EMULATION_MODE) != 0
+    if (strcmp(tpi.mode, TARGET_EMULATION_MODE) != 0
         && strcmp(tpi.mode, "any") != 0) {
         fprintf(stderr, "plugin: warning: incompatible emulation mode "
-                "(%s != %s)\n", tpi.mode, EMULATION_MODE);
+                "(%s != %s)\n", tpi.mode, TARGET_EMULATION_MODE);
     }
 
     tpi.is_generic = strcmp(tpi.guest, "any") == 0 && strcmp(tpi.mode, "any") == 0;

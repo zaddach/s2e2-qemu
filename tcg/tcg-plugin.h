@@ -154,7 +154,7 @@ struct TCGPluginInterface
 #define TPI_INIT_VERSION(tpi) do {                                     \
         (tpi).version = TPI_VERSION;                                   \
         (tpi).guest   = TARGET_NAME;                                   \
-        (tpi).mode    = EMULATION_MODE;                                \
+        (tpi).mode    = TARGET_EMULATION_MODE;                         \
         (tpi).sizeof_CPUState = sizeof(CPUArchState);                  \
         (tpi).sizeof_TranslationBlock = sizeof(TranslationBlock);      \
     } while (0);
