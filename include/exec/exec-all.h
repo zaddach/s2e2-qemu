@@ -179,6 +179,8 @@ struct TranslationBlock {
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
     uint32_t icount;
+
+    void *tcg_plugin_opaque;
 };
 
 #include "exec/spinlock.h"
