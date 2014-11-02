@@ -136,8 +136,8 @@ struct TCGPluginInterface
 
     /* Parameters for non-generic plugins.  */
     bool is_generic;
-    const CPUArchState *env;
-    const TranslationBlock *tb;
+    CPUArchState *env;
+    TranslationBlock *tb;
     TCGContext *tcg_ctx;
 
     /* Plugin's callbacks.  */
