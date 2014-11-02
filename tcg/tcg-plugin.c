@@ -407,6 +407,9 @@ void tcg_plugin_after_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock 
     }
 
     if (tpi.after_gen_tb) {
+    	tpi.tb = tb;
+    	tpi.tcg_ctx = s;
+    	tpi.env = env;
         TPI_CALLBACK_NOT_GENERIC(after_gen_tb);
     }
 
