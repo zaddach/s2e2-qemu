@@ -2466,6 +2466,9 @@ static inline void tcg_gen_mulu2_i64(TCGv_i64 rl, TCGv_i64 rh,
     }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconstant-logical-operand"
+
 static inline void tcg_gen_muls2_i64(TCGv_i64 rl, TCGv_i64 rh,
                                      TCGv_i64 arg1, TCGv_i64 arg2)
 {
@@ -2505,6 +2508,9 @@ static inline void tcg_gen_muls2_i64(TCGv_i64 rl, TCGv_i64 rh,
         tcg_temp_free_i64(t0);
     }
 }
+
+#pragma clang diagnostic pop
+
 
 /***************************************/
 /* QEMU specific operations. Their type depend on the QEMU CPU
