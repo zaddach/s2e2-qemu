@@ -40,7 +40,7 @@ static inline Int128 int128_2_64(void)
 
 static inline Int128 int128_exts64(int64_t a)
 {
-    return (Int128) { .lo = a, .hi = (a < 0) ? -1 : 0 };
+    return (Int128) { a, (a < 0) ? -1 : 0 };
 }
 
 static inline Int128 int128_and(Int128 a, Int128 b)

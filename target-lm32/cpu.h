@@ -195,7 +195,7 @@ typedef enum {
 static inline lm32_wp_t lm32_wp_type(uint32_t dc, int idx)
 {
     assert(idx < 4);
-    return (dc >> (idx+1)*2) & 0x3;
+    return (lm32_wp_t) ((dc >> (idx+1)*2) & 0x3);
 }
 
 #include "cpu-qom.h"

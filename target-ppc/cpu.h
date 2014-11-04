@@ -89,7 +89,9 @@
 
 /*****************************************************************************/
 /* MMU model                                                                 */
+#ifndef __cplusplus
 typedef enum powerpc_mmu_t powerpc_mmu_t;
+#endif /* __cplusplus */
 enum powerpc_mmu_t {
     POWERPC_MMU_UNKNOWN    = 0x00000000,
     /* Standard 32 bits PowerPC MMU                            */
@@ -131,7 +133,9 @@ enum powerpc_mmu_t {
 
 /*****************************************************************************/
 /* Exception model                                                           */
+#ifndef __cplusplus
 typedef enum powerpc_excp_t powerpc_excp_t;
+#endif /* __cplusplus */
 enum powerpc_excp_t {
     POWERPC_EXCP_UNKNOWN   = 0,
     /* Standard PowerPC exception model */
@@ -293,7 +297,9 @@ enum {
 
 /*****************************************************************************/
 /* Input pins model                                                          */
+#ifndef __cplusplus
 typedef enum powerpc_input_t powerpc_input_t;
+#endif /* __cplusplus */
 enum powerpc_input_t {
     PPC_FLAGS_INPUT_UNKNOWN = 0,
     /* PowerPC 6xx bus                  */

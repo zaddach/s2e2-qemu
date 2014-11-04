@@ -23,42 +23,6 @@
 
 #define DEBUG_PCALL
 
-#ifdef DEBUG_PCALL
-static const char * const excp_names[0x80] = {
-    [TT_TFAULT] = "Instruction Access Fault",
-    [TT_TMISS] = "Instruction Access MMU Miss",
-    [TT_CODE_ACCESS] = "Instruction Access Error",
-    [TT_ILL_INSN] = "Illegal Instruction",
-    [TT_PRIV_INSN] = "Privileged Instruction",
-    [TT_NFPU_INSN] = "FPU Disabled",
-    [TT_FP_EXCP] = "FPU Exception",
-    [TT_TOVF] = "Tag Overflow",
-    [TT_CLRWIN] = "Clean Windows",
-    [TT_DIV_ZERO] = "Division By Zero",
-    [TT_DFAULT] = "Data Access Fault",
-    [TT_DMISS] = "Data Access MMU Miss",
-    [TT_DATA_ACCESS] = "Data Access Error",
-    [TT_DPROT] = "Data Protection Error",
-    [TT_UNALIGNED] = "Unaligned Memory Access",
-    [TT_PRIV_ACT] = "Privileged Action",
-    [TT_EXTINT | 0x1] = "External Interrupt 1",
-    [TT_EXTINT | 0x2] = "External Interrupt 2",
-    [TT_EXTINT | 0x3] = "External Interrupt 3",
-    [TT_EXTINT | 0x4] = "External Interrupt 4",
-    [TT_EXTINT | 0x5] = "External Interrupt 5",
-    [TT_EXTINT | 0x6] = "External Interrupt 6",
-    [TT_EXTINT | 0x7] = "External Interrupt 7",
-    [TT_EXTINT | 0x8] = "External Interrupt 8",
-    [TT_EXTINT | 0x9] = "External Interrupt 9",
-    [TT_EXTINT | 0xa] = "External Interrupt 10",
-    [TT_EXTINT | 0xb] = "External Interrupt 11",
-    [TT_EXTINT | 0xc] = "External Interrupt 12",
-    [TT_EXTINT | 0xd] = "External Interrupt 13",
-    [TT_EXTINT | 0xe] = "External Interrupt 14",
-    [TT_EXTINT | 0xf] = "External Interrupt 15",
-};
-#endif
-
 void sparc_cpu_do_interrupt(CPUState *cs)
 {
     SPARCCPU *cpu = SPARC_CPU(cs);
@@ -85,9 +49,40 @@ void sparc_cpu_do_interrupt(CPUState *cs)
         } else if (intno >= 0x80) {
             name = "Window Spill";
         } else {
-            name = excp_names[intno];
-            if (!name) {
-                name = "Unknown";
+            switch (intno)
+            {
+                case TT_TFAULT:       name = "Instruction Access Fault";    break;
+                case TT_TMISS:        name = "Instruction Access MMU Miss"; break;
+                case TT_CODE_ACCESS:  name = "Instruction Access Error";    break;
+                case TT_ILL_INSN:     name = "Illegal Instruction";         break;
+                case TT_PRIV_INSN:    name = "Privileged Instruction";      break;
+                case TT_NFPU_INSN:    name = "FPU Disabled";                break;
+                case TT_FP_EXCP:      name = "FPU Exception";               break;
+                case TT_TOVF:         name = "Tag Overflow";                break;
+                case TT_CLRWIN:       name = "Clean Windows";               break;
+                case TT_DIV_ZERO:     name = "Division By Zero";            break;
+                case TT_DFAULT:       name = "Data Access Fault";           break;
+                case TT_DMISS:        name = "Data Access MMU Miss";        break;
+                case TT_DATA_ACCESS:  name = "Data Access Error";           break;
+                case TT_DPROT:        name = "Data Protection Error";       break;
+                case TT_UNALIGNED:    name = "Unaligned Memory Access";     break;
+                case TT_PRIV_ACT:     name = "Privileged Action";           break;
+                case TT_EXTINT | 0x1: name = "External Interrupt 1";        break;
+                case TT_EXTINT | 0x2: name = "External Interrupt 2";        break;
+                case TT_EXTINT | 0x3: name = "External Interrupt 3";        break;
+                case TT_EXTINT | 0x4: name = "External Interrupt 4";        break;
+                case TT_EXTINT | 0x5: name = "External Interrupt 5";        break;
+                case TT_EXTINT | 0x6: name = "External Interrupt 6";        break;
+                case TT_EXTINT | 0x7: name = "External Interrupt 7";        break;
+                case TT_EXTINT | 0x8: name = "External Interrupt 8";        break;
+                case TT_EXTINT | 0x9: name = "External Interrupt 9";        break;
+                case TT_EXTINT | 0xa: name = "External Interrupt 10";       break;
+                case TT_EXTINT | 0xb: name = "External Interrupt 11";       break;
+                case TT_EXTINT | 0xc: name = "External Interrupt 12";       break;
+                case TT_EXTINT | 0xd: name = "External Interrupt 13";       break;
+                case TT_EXTINT | 0xe: name = "External Interrupt 14";       break;
+                case TT_EXTINT | 0xf: name = "External Interrupt 15";       break;
+                default:             name = "Unknown";                     break;
             }
         }
 
