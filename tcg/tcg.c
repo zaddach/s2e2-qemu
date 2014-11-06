@@ -40,6 +40,8 @@
 #include "qemu/host-utils.h"
 #include "qemu/timer.h"
 
+#include "tcg-plugin-helpers.h"
+
 /* Note: the long term plan is to reduce the dependencies on the QEMU
    CPU definitions. Currently they are used for qemu_ld/st
    instructions */
@@ -952,12 +954,27 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     TCGArg *opargs  = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 0);
 
+#ifdef CONFIG_TCG_PLUGIN
+    TCGv_i32 do_mem_access = tcg_temp_local_new_i32();
+    TCGv_i32 is_store = tcg_const_i32(0);
+    TCGv_i32 arg_memop = tcg_const_i32(memop);
+
+    gen_helper_pre_memory_access(do_mem_access, addr, val, is_store, arg_memop);
+
+    TCGLabel after_mem_access = gen_new_label();
+
+#endif /* CONFIG_TCG_PLUGIN */
+
+
+
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_ld_i32;
     tcg_add_param_i32(val);
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
     
+
+
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
