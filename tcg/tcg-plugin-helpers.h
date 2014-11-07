@@ -49,14 +49,14 @@ static inline void tcgplugin_gen_helper_intercept_ld_i32(
 static inline void tcgplugin_gen_helper_post_qemu_ld_i32(
 		TCGContext *s,
 		TCGv_i32 addr,
-		TCGv_i32 val,
 		TCGv_i32 idx,
+		TCGv_i32 val,
 		TCGv_i32 memop)
 {
 	TCGArg args[4] = {
 			GET_TCGV_I32(addr),
-			GET_TCGV_I32(val),
 			GET_TCGV_I32(idx),
+			GET_TCGV_I32(val),
 			GET_TCGV_I32(memop)};
 
 	tcg_gen_callN(s, (void *) tcgplugin_helper_post_qemu_ld_i32, GET_TCGV_I32(val), 4, args);
