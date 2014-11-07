@@ -170,4 +170,7 @@ struct TCGPluginInterface
 typedef void (* tpi_init_t)(TCGPluginInterface *tpi);
 void tpi_init(TCGPluginInterface *tpi);
 
+extern bool tcgplugin_intercept_qemu_ld;
+extern bool tcgplugin_monitor_qemu_ld;
+
 #endif /* TCG_PLUGIN_H */

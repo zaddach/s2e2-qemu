@@ -40,8 +40,14 @@
 #include "exec/helper-proto.h"
 
 #include "tcg-plugin.h"
+#include "tcg-plugin-helpers.h"
 #include "exec/exec-all.h"   /* CPUArchState, TranslationBlock */
 #include "sysemu/sysemu.h"     /* max_cpus */
+
+
+
+bool tcgplugin_intercept_qemu_ld = 1;
+bool tcgplugin_monitor_qemu_ld = 1;
 
 /* Interface for the TCG plugin.  */
 static TCGPluginInterface tpi;
@@ -281,6 +287,21 @@ error:
 
 void tcg_plugin_register_helpers(TCGContext *s)
 {
+	plgapi_register_helper(s,
+			tcgplugin_helper_pre_qemu_ld_i32,
+			"tcgplugin_helper_pre_qemu_ld_i32",
+			0,
+			dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3));
+	plgapi_register_helper(s,
+				tcgplugin_helper_intercept_qemu_ld_i32,
+				"tcgplugin_helper_intercept_qemu_ld_i32",
+				0,
+				dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3));
+	plgapi_register_helper(s,
+				tcgplugin_helper_post_qemu_ld_i32,
+				"tcgplugin_helper_post_qemu_ld_i32",
+				0,
+				dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4));
 	if (tpi.register_helpers)  {
 		tpi.tcg_ctx = s;
 		tpi.register_helpers(&tpi);
@@ -503,3 +524,19 @@ const char *tcg_plugin_get_filename(void)
     return exec_path;
 }
 #endif
+
+uint32_t tcgplugin_helper_pre_qemu_ld_i32(uint32_t addr, uint32_t idx, uint32_t memop)
+{
+	printf("haha!\n");
+	return 0;
+}
+
+uint32_t tcgplugin_helper_intercept_qemu_ld_i32(uint32_t addr, uint32_t idx, uint32_t memop)
+{
+	return 0;
+}
+
+uint32_t tcgplugin_helper_post_qemu_ld_i32(uint32_t addr, uint32_t val, uint32_t idx, uint32_t memop)
+{
+	return val;
+}

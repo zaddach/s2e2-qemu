@@ -954,18 +954,37 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     TCGArg *opargs  = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 0);
 
+
+
 #ifdef CONFIG_TCG_PLUGIN
-    TCGv_i32 do_mem_access = tcg_temp_local_new_i32();
-    TCGv_i32 is_store = tcg_const_i32(0);
-    TCGv_i32 arg_memop = tcg_const_i32(memop);
+    int lbl_after_ld = -1;
+    TCGv_i32 tcg_idx;
+	TCGv_i32 tcg_memop;
 
-    gen_helper_pre_memory_access(do_mem_access, addr, val, is_store, arg_memop);
+	if (tcgplugin_intercept_qemu_ld || tcgplugin_monitor_qemu_ld)  {
+		tcg_idx = tcg_const_i32(idx);
+		tcg_memop = tcg_const_i32(memop);
+	}
 
-    TCGLabel after_mem_access = gen_new_label();
+    if (tcgplugin_intercept_qemu_ld)  {
+		TCGv_i32 tcg_do_intercept = tcg_temp_new_i32();
+		TCGv_i32 tcg_zero = tcg_const_i32(0);
 
+		tcgplugin_gen_helper_pre_qemu_ld_i32(&tcg_ctx, tcg_do_intercept, addr, tcg_idx, tcg_memop);
+
+		int lbl_do_ld = gen_new_label();
+		tcg_gen_brcond_i32(TCG_COND_EQ, tcg_do_intercept, tcg_zero, lbl_do_ld);
+
+		tcgplugin_gen_helper_intercept_ld_i32(&tcg_ctx, val, addr, tcg_idx, tcg_memop);
+		lbl_after_ld = gen_new_label();
+		tcg_gen_br(lbl_after_ld);
+
+		gen_set_label(lbl_do_ld);
+
+		tcg_temp_free_i32(tcg_do_intercept);
+		tcg_temp_free_i32(tcg_zero);
+    }
 #endif /* CONFIG_TCG_PLUGIN */
-
-
 
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_ld_i32;
     tcg_add_param_i32(val);
@@ -973,6 +992,22 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
     
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_monitor_qemu_ld)  {
+		tcgplugin_gen_helper_post_qemu_ld_i32(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+    }
+
+    if (tcgplugin_intercept_qemu_ld)  {
+		gen_set_label(lbl_after_ld);
+    }
+
+    if (tcgplugin_intercept_qemu_ld || tcgplugin_monitor_qemu_ld)  {
+    	tcg_temp_free_i32(tcg_idx);
+		tcg_temp_free_i32(tcg_memop);
+    }
+
+#endif /* CONFIG_TCG_PLUGIN */
+
 
 
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
