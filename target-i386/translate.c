@@ -7885,6 +7885,8 @@ void optimize_flags_init(void)
                                          offsetof(CPUX86State, regs[i]),
                                          reg_names[i]);
     }
+
+    tcg_plugin_guest_arch_init(cpu_env);
 }
 
 /* generate intermediate code in gen_opc_buf and gen_opparam_buf for

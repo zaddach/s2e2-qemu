@@ -954,35 +954,16 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     TCGArg *opargs  = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 0);
 
-
-
 #ifdef CONFIG_TCG_PLUGIN
-    int lbl_after_ld = -1;
-    TCGv_i32 tcg_idx;
-	TCGv_i32 tcg_memop;
-
-	if (tcgplugin_intercept_qemu_ld || tcgplugin_monitor_qemu_ld)  {
-		tcg_idx = tcg_const_i32(idx);
-		tcg_memop = tcg_const_i32(memop);
-	}
-
     if (tcgplugin_intercept_qemu_ld)  {
-		TCGv_i32 tcg_do_intercept = tcg_temp_new_i32();
-		TCGv_i32 tcg_zero = tcg_const_i32(0);
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+    	TCGv_i32 tcg_memop = tcg_const_i32(memop);
+    	tcgplugin_gen_helper_intercept_ld_i32(&tcg_ctx, val, addr, tcg_idx, tcg_memop);
+    	tcg_temp_free_i32(tcg_idx);
+    	tcg_temp_free_i32(tcg_memop);
 
-		tcgplugin_gen_helper_pre_qemu_ld_i32(&tcg_ctx, tcg_do_intercept, addr, tcg_idx, tcg_memop);
-
-		int lbl_do_ld = gen_new_label();
-		tcg_gen_brcond_i32(TCG_COND_EQ, tcg_do_intercept, tcg_zero, lbl_do_ld);
-
-		tcgplugin_gen_helper_intercept_ld_i32(&tcg_ctx, val, addr, tcg_idx, tcg_memop);
-		lbl_after_ld = gen_new_label();
-		tcg_gen_br(lbl_after_ld);
-
-		gen_set_label(lbl_do_ld);
-
-		tcg_temp_free_i32(tcg_do_intercept);
-		tcg_temp_free_i32(tcg_zero);
+    	TCG_PLUGIN_POST_GEN_OPC2(opargs);
+    	return;
     }
 #endif /* CONFIG_TCG_PLUGIN */
 
@@ -994,21 +975,13 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     
 #ifdef CONFIG_TCG_PLUGIN
     if (tcgplugin_monitor_qemu_ld)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+		TCGv_i32 tcg_memop = tcg_const_i32(memop);
 		tcgplugin_gen_helper_post_qemu_ld_i32(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
-    }
-
-    if (tcgplugin_intercept_qemu_ld)  {
-		gen_set_label(lbl_after_ld);
-    }
-
-    if (tcgplugin_intercept_qemu_ld || tcgplugin_monitor_qemu_ld)  {
-    	tcg_temp_free_i32(tcg_idx);
+		tcg_temp_free_i32(tcg_idx);
 		tcg_temp_free_i32(tcg_memop);
     }
-
 #endif /* CONFIG_TCG_PLUGIN */
-
-
 
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }

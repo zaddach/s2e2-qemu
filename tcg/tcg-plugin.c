@@ -46,8 +46,11 @@
 
 
 
+
 bool tcgplugin_intercept_qemu_ld = 1;
 bool tcgplugin_monitor_qemu_ld = 1;
+
+TCGv_ptr tcgplugin_cpu_env;
 
 /* Interface for the TCG plugin.  */
 static TCGPluginInterface tpi;
@@ -288,11 +291,6 @@ error:
 void tcg_plugin_register_helpers(TCGContext *s)
 {
 	plgapi_register_helper(s,
-			tcgplugin_helper_pre_qemu_ld_i32,
-			"tcgplugin_helper_pre_qemu_ld_i32",
-			0,
-			dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3));
-	plgapi_register_helper(s,
 				tcgplugin_helper_intercept_qemu_ld_i32,
 				"tcgplugin_helper_intercept_qemu_ld_i32",
 				0,
@@ -525,18 +523,38 @@ const char *tcg_plugin_get_filename(void)
 }
 #endif
 
-uint32_t tcgplugin_helper_pre_qemu_ld_i32(uint32_t addr, uint32_t idx, uint32_t memop)
+void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env)
 {
-	printf("haha!\n");
-	return 0;
+	tcgplugin_cpu_env = cpu_env;
 }
 
-uint32_t tcgplugin_helper_intercept_qemu_ld_i32(uint32_t addr, uint32_t idx, uint32_t memop)
+
+
+uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, uint32_t addr, uint32_t idx, uint32_t memop)
 {
-	return 0;
+	switch (memop)
+	{
+	case MO_UB:   return helper_ret_ldub_mmu(env, addr, idx, GETRA());
+	case MO_SB:   return helper_ret_ldsb_mmu(env, addr, idx, GETRA());
+
+	case MO_LEUW: return helper_le_lduw_mmu(env, addr, idx, GETRA());
+	case MO_LEUL: return helper_le_ldul_mmu(env, addr, idx, GETRA());
+	case MO_LEQ:  return helper_le_ldq_mmu(env, addr, idx, GETRA());
+	case MO_LESW: return helper_le_ldsw_mmu(env, addr, idx, GETRA());
+	case MO_LESL: return helper_le_ldul_mmu(env, addr, idx, GETRA());
+
+	case MO_BEUW: return helper_be_lduw_mmu(env, addr, idx, GETRA());
+	case MO_BEUL: return helper_be_ldul_mmu(env, addr, idx, GETRA());
+	case MO_BEQ:  return helper_be_ldq_mmu(env, addr, idx, GETRA());
+	case MO_BESW: return helper_be_ldsw_mmu(env, addr, idx, GETRA());
+	case MO_BESL: return helper_be_ldul_mmu(env, addr, idx, GETRA());
+	default:
+		printf("ERROR: unknown memory operation %d\n", memop);
+		tcg_abort();
+		break;
+	}
 }
 
-uint32_t tcgplugin_helper_post_qemu_ld_i32(uint32_t addr, uint32_t val, uint32_t idx, uint32_t memop)
+void tcgplugin_helper_post_qemu_ld_i32(uint32_t addr, uint32_t val, uint32_t idx, uint32_t memop)
 {
-	return val;
 }

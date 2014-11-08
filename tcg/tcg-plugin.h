@@ -47,6 +47,7 @@
 #ifdef CONFIG_TCG_PLUGIN
     bool tcg_plugin_enabled(void);
     void tcg_plugin_load(const char *name);
+    void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env);
     void tcg_plugin_register_helpers(TCGContext* s);
     void tcg_plugin_cpus_stopped(void);
     void tcg_plugin_register_info(uint64_t pc, CPUArchState *env, TCGContext *s, TranslationBlock *tb);
@@ -57,6 +58,7 @@
 #else
 #   define tcg_plugin_enabled() false
 #   define tcg_plugin_load(dso)
+#   define tcg_plugin_guest_arch_init(cpu_env)
 #   define tcg_plugin_register_helpers(tcg_ctx)
 #   define tcg_plugin_cpus_stopped()
 #   define tcg_plugin_register_info(pc, env, tb)
@@ -169,6 +171,8 @@ struct TCGPluginInterface
 
 typedef void (* tpi_init_t)(TCGPluginInterface *tpi);
 void tpi_init(TCGPluginInterface *tpi);
+
+void tcgplugin_guest_arch_init(TCGv_ptr cpu_env);
 
 extern bool tcgplugin_intercept_qemu_ld;
 extern bool tcgplugin_monitor_qemu_ld;

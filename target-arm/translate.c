@@ -35,6 +35,8 @@
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 
+#include "tcg-plugin.h"
+
 #define ENABLE_ARCH_4T    arm_feature(env, ARM_FEATURE_V4T)
 #define ENABLE_ARCH_5     arm_feature(env, ARM_FEATURE_V5)
 /* currently all emulated v5 cores are also v5TE, so don't bother */
@@ -108,6 +110,8 @@ void arm_translate_init(void)
 #endif
 
     a64_translate_init();
+
+    tcg_plugin_guest_arch_init(cpu_env);
 }
 
 static inline TCGv_i32 load_cpu_offset(int offset)
@@ -840,7 +844,7 @@ static inline void store_reg_from_load(CPUARMState *env, DisasContext *s,
 #define DO_GEN_LD(SUFF, OPC)                                             \
 static inline void gen_aa32_ld##SUFF(TCGv_i32 val, TCGv_i32 addr, int index) \
 {                                                                        \
-    tcg_gen_qemu_ld_i32(val, addr, index, OPC);                          \
+    tcg_gen_qemu_ld_i32(val, addr, index, OPC);                 \
 }
 
 #define DO_GEN_ST(SUFF, OPC)                                             \
@@ -866,7 +870,7 @@ static inline void gen_aa32_ld##SUFF(TCGv_i32 val, TCGv_i32 addr, int index) \
 {                                                                        \
     TCGv addr64 = tcg_temp_new();                                        \
     tcg_gen_extu_i32_i64(addr64, addr);                                  \
-    tcg_gen_qemu_ld_i32(val, addr64, index, OPC);                        \
+    tcg_gen_qemu_ld_i32(val, addr64, index, OPC);               \
     tcg_temp_free(addr64);                                               \
 }
 
