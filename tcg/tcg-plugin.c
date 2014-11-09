@@ -605,17 +605,17 @@ uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong 
 	case MO_UB:   return *((uint8_t *) addr);
 	case MO_SB:   return (uint64_t)((int64_t) *((int8_t *) addr));
 
-	case MO_LEUW: return *((uint16_t *) addr);
-	case MO_LEUL: return *((uint32_t *) addr);
-	case MO_LEQ:  return *((uint64_t *) addr);
-	case MO_LESW: return (uint64_t)((int64_t) *((int16_t *) addr));
-	case MO_LESL: return (uint64_t)((int64_t) *((int32_t *) addr));
+	case MO_LEUW: return le16toh(*((uint16_t *) addr));
+	case MO_LEUL: return le32toh(*((uint32_t *) addr));
+	case MO_LEQ:  return le64toh(*((uint64_t *) addr));
+	case MO_LESW: return (uint64_t)((int64_t) le16toh(*((int16_t *) addr)));
+	case MO_LESL: return (uint64_t)((int64_t) le32toh(*((int32_t *) addr)));
 
-	case MO_BEUW: return bswap16(*((uint16_t *) addr));
-	case MO_BEUL: return bswap32(*((uint32_t *) addr));
-	case MO_BEQ:  return bswap64(*((uint64_t *) addr));
-	case MO_BESW: return (uint64_t) ((int64_t) bswap16s(*((int16_t *) addr)));
-	case MO_BESL: return (uint64_t) ((int64_t) bswap32s(*((int32_t *) addr)));
+	case MO_BEUW: return be16toh(*((uint16_t *) addr));
+	case MO_BEUL: return be32toh(*((uint32_t *) addr));
+	case MO_BEQ:  return be64toh(*((uint64_t *) addr));
+	case MO_BESW: return (uint64_t) ((int64_t) be16toh(*((int16_t *) addr)));
+	case MO_BESL: return (uint64_t) ((int64_t) be32toh(*((int32_t *) addr)));
 	default:
 		printf("ERROR: unknown memory operation %d\n", memop);
 		tcg_abort();
@@ -673,17 +673,17 @@ void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr
 	case MO_UB:   *((uint8_t *) addr) = (uint8_t) val;                       break;
 	case MO_SB:   *((uint8_t *) addr) = (uint8_t) ((int8_t) val);            break;
 
-	case MO_LEUW: *((uint16_t *) addr) = (uint16_t) val;                     break;
-	case MO_LEUL: *((uint32_t *) addr) = (uint32_t) val;                     break;
-	case MO_LEQ:  *((uint64_t *) addr) = val;                                break;
-	case MO_LESW: *((int16_t *) addr) = (int16_t) val;                       break;
-	case MO_LESL: *((int32_t *) addr) = (int32_t) val;                       break;
+	case MO_LEUW: *((uint16_t *) addr) = htole16((uint16_t) val);            break;
+	case MO_LEUL: *((uint32_t *) addr) = htole32((uint32_t) val);            break;
+	case MO_LEQ:  *((uint64_t *) addr) = htole64(val);                       break;
+	case MO_LESW: *((uint16_t *) addr) = htole16((uint16_t) val);            break;
+	case MO_LESL: *((uint32_t *) addr) = htole32((uint32_t) val);            break;
 
-	case MO_BEUW: *((uint16_t *) addr) = bswap16((uint16_t) val);            break;
-	case MO_BEUL: *((uint32_t *) addr) = bswap32((uint32_t) val);            break;
-	case MO_BEQ:  *((uint64_t *) addr) = bswap64(val);                       break;
-	case MO_BESW: *((uint16_t *) addr) = (uint16_t) bswap16s((int16_t) val); break;
-	case MO_BESL: *((uint32_t *) addr) = (uint32_t) bswap32s((int32_t) val); break;
+	case MO_BEUW: *((uint16_t *) addr) = htobe16((uint16_t) val);            break;
+	case MO_BEUL: *((uint32_t *) addr) = htobe32((uint32_t) val);            break;
+	case MO_BEQ:  *((uint64_t *) addr) = htobe64(val);                       break;
+	case MO_BESW: *((uint16_t *) addr) = htobe16((uint16_t) val);            break;
+	case MO_BESL: *((uint32_t *) addr) = htobe32((uint32_t) val);            break;
 	default:
 		printf("ERROR: unknown memory operation %d\n", memop);
 		tcg_abort();
