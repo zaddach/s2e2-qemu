@@ -174,7 +174,7 @@ void tpi_init(TCGPluginInterface *tpi);
 
 void tcgplugin_guest_arch_init(TCGv_ptr cpu_env);
 
-extern bool tcgplugin_intercept_qemu_ld;
-extern bool tcgplugin_monitor_qemu_ld;
+extern bool tcgplugin_intercept_qemu_ldst;
+extern bool tcgplugin_monitor_qemu_ldst;
 
 #endif /* TCG_PLUGIN_H */

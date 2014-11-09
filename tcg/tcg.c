@@ -40,8 +40,6 @@
 #include "qemu/host-utils.h"
 #include "qemu/timer.h"
 
-#include "tcg-plugin-helpers.h"
-
 /* Note: the long term plan is to reduce the dependencies on the QEMU
    CPU definitions. Currently they are used for qemu_ld/st
    instructions */
@@ -49,6 +47,7 @@
 #include "cpu.h"
 
 #include "tcg-op.h"
+#include "tcg-plugin-helpers.h"
 
 #if UINTPTR_MAX == UINT32_MAX
 # define ELF_CLASS  ELFCLASS32
@@ -955,7 +954,7 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     memop = tcg_canonicalize_memop(memop, 0, 0);
 
 #ifdef CONFIG_TCG_PLUGIN
-    if (tcgplugin_intercept_qemu_ld)  {
+    if (tcgplugin_intercept_qemu_ldst)  {
     	TCGv_i32 tcg_idx = tcg_const_i32(idx);
     	TCGv_i32 tcg_memop = tcg_const_i32(memop);
     	tcgplugin_gen_helper_intercept_ld_i32(&tcg_ctx, val, addr, tcg_idx, tcg_memop);
@@ -974,7 +973,7 @@ void tcg_gen_qemu_ld_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     *tcg_ctx.gen_opparam_ptr++ = idx;
     
 #ifdef CONFIG_TCG_PLUGIN
-    if (tcgplugin_monitor_qemu_ld)  {
+    if (tcgplugin_monitor_qemu_ldst)  {
     	TCGv_i32 tcg_idx = tcg_const_i32(idx);
 		TCGv_i32 tcg_memop = tcg_const_i32(memop);
 		tcgplugin_gen_helper_post_qemu_ld_i32(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
@@ -991,11 +990,36 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     TCGArg *opargs = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 1);
 
+    printf("Generating QEMU STi32\n");
+
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_intercept_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+    	TCGv_i32 tcg_memop = tcg_const_i32(memop);
+    	tcgplugin_gen_helper_intercept_st_i32(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+    	tcg_temp_free_i32(tcg_idx);
+    	tcg_temp_free_i32(tcg_memop);
+
+    	TCG_PLUGIN_POST_GEN_OPC2(opargs);
+    	return;
+    }
+#endif /* CONFIG_TCG_PLUGIN */
+
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_st_i32;
-    tcg_add_param_i32(val);
-    tcg_add_param_tl(addr);
-    *tcg_ctx.gen_opparam_ptr++ = memop;
-    *tcg_ctx.gen_opparam_ptr++ = idx;
+        tcg_add_param_i32(val);
+        tcg_add_param_tl(addr);
+        *tcg_ctx.gen_opparam_ptr++ = memop;
+        *tcg_ctx.gen_opparam_ptr++ = idx;
+
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_monitor_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+		TCGv_i32 tcg_memop = tcg_const_i32(memop);
+		tcgplugin_gen_helper_post_qemu_st_i32(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+		tcg_temp_free_i32(tcg_idx);
+		tcg_temp_free_i32(tcg_memop);
+    }
+#endif /* CONFIG_TCG_PLUGIN */
     
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
@@ -1018,11 +1042,35 @@ void tcg_gen_qemu_ld_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     }
 #endif
 
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_intercept_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+    	TCGv_i32 tcg_memop = tcg_const_i32(memop);
+    	tcgplugin_gen_helper_intercept_ld_i64(&tcg_ctx, val, addr, tcg_idx, tcg_memop);
+    	tcg_temp_free_i32(tcg_idx);
+    	tcg_temp_free_i32(tcg_memop);
+
+    	TCG_PLUGIN_POST_GEN_OPC2(opargs);
+    	return;
+    }
+#endif /* CONFIG_TCG_PLUGIN */
+
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_ld_i64;
     tcg_add_param_i64(val);
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_monitor_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+		TCGv_i32 tcg_memop = tcg_const_i32(memop);
+		tcgplugin_gen_helper_post_qemu_ld_i64(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+		tcg_temp_free_i32(tcg_idx);
+		tcg_temp_free_i32(tcg_memop);
+    }
+#endif /* CONFIG_TCG_PLUGIN */
+
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }
 
@@ -1039,11 +1087,34 @@ void tcg_gen_qemu_st_i64(TCGv_i64 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     }
 #endif
 
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_intercept_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+    	TCGv_i32 tcg_memop = tcg_const_i32(memop);
+    	tcgplugin_gen_helper_intercept_st_i64(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+    	tcg_temp_free_i32(tcg_idx);
+    	tcg_temp_free_i32(tcg_memop);
+
+    	TCG_PLUGIN_POST_GEN_OPC2(opargs);
+    	return;
+    }
+#endif /* CONFIG_TCG_PLUGIN */
+
     *tcg_ctx.gen_opc_ptr++ = INDEX_op_qemu_st_i64;
     tcg_add_param_i64(val);
     tcg_add_param_tl(addr);
     *tcg_ctx.gen_opparam_ptr++ = memop;
     *tcg_ctx.gen_opparam_ptr++ = idx;
+
+#ifdef CONFIG_TCG_PLUGIN
+    if (tcgplugin_monitor_qemu_ldst)  {
+    	TCGv_i32 tcg_idx = tcg_const_i32(idx);
+		TCGv_i32 tcg_memop = tcg_const_i32(memop);
+		tcgplugin_gen_helper_post_qemu_st_i64(&tcg_ctx, addr, tcg_idx, val, tcg_memop);
+		tcg_temp_free_i32(tcg_idx);
+		tcg_temp_free_i32(tcg_memop);
+    }
+#endif /* CONFIG_TCG_PLUGIN */
 
     TCG_PLUGIN_POST_GEN_OPC2(opargs);
 }

@@ -47,8 +47,8 @@
 
 
 
-bool tcgplugin_intercept_qemu_ld = 1;
-bool tcgplugin_monitor_qemu_ld = 1;
+bool tcgplugin_intercept_qemu_ldst = 0;
+bool tcgplugin_monitor_qemu_ldst = 1;
 
 TCGv_ptr tcgplugin_cpu_env;
 
@@ -293,13 +293,44 @@ void tcg_plugin_register_helpers(TCGContext *s)
 	plgapi_register_helper(s,
 				tcgplugin_helper_intercept_qemu_ld_i32,
 				"tcgplugin_helper_intercept_qemu_ld_i32",
-				0,
-				dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3));
+				0 /* Can modify globals, can have side effects */,
+				dh_sizemask(i32, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3));
 	plgapi_register_helper(s,
 				tcgplugin_helper_post_qemu_ld_i32,
 				"tcgplugin_helper_post_qemu_ld_i32",
-				0,
-				dh_sizemask(i32, 0) | dh_sizemask(i32, 1) | dh_sizemask(i32, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4));
+				TCG_CALL_NO_RWG_SE,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4) | dh_sizemask(i32, 5));
+	plgapi_register_helper(s,
+				tcgplugin_helper_intercept_qemu_st_i32,
+				"tcgplugin_helper_intercept_qemu_st_i32",
+				0 /* Can modify globals, can have side effects */,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4) | dh_sizemask(i32, 5));
+	plgapi_register_helper(s,
+				tcgplugin_helper_post_qemu_st_i32,
+				"tcgplugin_helper_post_qemu_ld_i32",
+				TCG_CALL_NO_RWG_SE,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4) | dh_sizemask(i32, 5));
+
+	plgapi_register_helper(s,
+					tcgplugin_helper_intercept_qemu_ld_i64,
+					"tcgplugin_helper_intercept_qemu_ld_i64",
+					0 /* Can modify globals, can have side effects */,
+					dh_sizemask(i32, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3));
+		plgapi_register_helper(s,
+					tcgplugin_helper_post_qemu_ld_i64,
+					"tcgplugin_helper_post_qemu_ld_i64",
+					TCG_CALL_NO_RWG_SE,
+					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
+		plgapi_register_helper(s,
+					tcgplugin_helper_intercept_qemu_st_i64,
+					"tcgplugin_helper_intercept_qemu_st_i64",
+					0 /* Can modify globals, can have side effects */,
+					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
+		plgapi_register_helper(s,
+					tcgplugin_helper_post_qemu_st_i64,
+					"tcgplugin_helper_post_qemu_ld_i64",
+					TCG_CALL_NO_RWG_SE,
+					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
 	if (tpi.register_helpers)  {
 		tpi.tcg_ctx = s;
 		tpi.register_helpers(&tpi);
@@ -529,8 +560,12 @@ void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env)
 }
 
 
+uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t memop)
+{
+	return (uint32_t) tcgplugin_helper_intercept_qemu_ld_i64(env, addr, idx, memop);
+}
 
-uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, uint32_t addr, uint32_t idx, uint32_t memop)
+uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t memop)
 {
 	switch (memop)
 	{
@@ -555,6 +590,47 @@ uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, uint32_t addr
 	}
 }
 
-void tcgplugin_helper_post_qemu_ld_i32(uint32_t addr, uint32_t val, uint32_t idx, uint32_t memop)
+void tcgplugin_helper_post_qemu_ld_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
+{
+	tcgplugin_helper_post_qemu_ld_i64(env, addr, idx, val, memop);
+}
+
+void tcgplugin_helper_post_qemu_ld_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
 }
+
+void tcgplugin_helper_intercept_qemu_st_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
+{
+	tcgplugin_helper_intercept_qemu_st_i64(env, addr, idx, val, memop);
+}
+
+void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
+{
+	switch (memop)
+	{
+	case MO_UB:   helper_ret_stb_mmu(env, addr, val, idx, GETRA()); break;
+
+	case MO_LEUW: helper_le_stw_mmu(env, addr, val, idx, GETRA());  break;
+	case MO_LEUL: helper_le_stl_mmu(env, addr, val, idx, GETRA());  break;
+	case MO_LEQ:  helper_le_stq_mmu(env, addr, val, idx, GETRA());  break;
+
+	case MO_BEUW: helper_be_stw_mmu(env, addr, val, idx, GETRA());  break;
+	case MO_BEUL: helper_be_stl_mmu(env, addr, val, idx, GETRA());  break;
+	case MO_BEQ:  helper_be_stq_mmu(env, addr, val, idx, GETRA());  break;
+	default:
+		printf("ERROR: unknown memory operation %d\n", memop);
+		tcg_abort();
+		break;
+	}
+}
+
+
+void tcgplugin_helper_post_qemu_st_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
+{
+	tcgplugin_helper_post_qemu_st_i64(env, addr, idx, val, memop);
+}
+
+void tcgplugin_helper_post_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
+{
+}
+
