@@ -567,6 +567,7 @@ uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, target_ulong 
 
 uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t memop)
 {
+#ifdef CONFIG_SOFTMMU
 	switch (memop)
 	{
 	case MO_UB:   return helper_ret_ldub_mmu(env, addr, idx, GETRA());
@@ -588,6 +589,39 @@ uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong 
 		tcg_abort();
 		break;
 	}
+#else
+
+#ifdef HOST_WORDS_BIGENDIAN
+#error This code has been written with little endian hosts in mind only. Possible bugs lurk.
+#endif
+
+	//TODO: This code has never been tested, possible bugs
+	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
+			__func__, __FILE__, __LINE__);
+	tcg_abort();
+
+	switch (memop)
+	{
+	case MO_UB:   return *((uint8_t *) addr);
+	case MO_SB:   return (uint64_t)((int64_t) *((int8_t *) addr));
+
+	case MO_LEUW: return *((uint16_t *) addr);
+	case MO_LEUL: return *((uint32_t *) addr);
+	case MO_LEQ:  return *((uint64_t *) addr);
+	case MO_LESW: return (uint64_t)((int64_t) *((int16_t *) addr));
+	case MO_LESL: return (uint64_t)((int64_t) *((int32_t *) addr));
+
+	case MO_BEUW: return bswap16(*((uint16_t *) addr));
+	case MO_BEUL: return bswap32(*((uint32_t *) addr));
+	case MO_BEQ:  return bswap64(*((uint64_t *) addr));
+	case MO_BESW: return (uint64_t) ((int64_t) bswap16s(*((int16_t *) addr)));
+	case MO_BESL: return (uint64_t) ((int64_t) bswap32s(*((int32_t *) addr)));
+	default:
+		printf("ERROR: unknown memory operation %d\n", memop);
+		tcg_abort();
+		break;
+	}
+#endif /* CONFIG_SOFTMMU */
 }
 
 void tcgplugin_helper_post_qemu_ld_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
@@ -606,6 +640,7 @@ void tcgplugin_helper_intercept_qemu_st_i32(CPUArchState *env, target_ulong addr
 
 void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
+#ifdef CONFIG_SOFTMMU
 	switch (memop)
 	{
 	case MO_UB:   helper_ret_stb_mmu(env, addr, val, idx, GETRA()); break;
@@ -622,6 +657,39 @@ void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr
 		tcg_abort();
 		break;
 	}
+#else
+
+#ifdef HOST_WORDS_BIGENDIAN
+#error This code has been written with little endian hosts in mind only. Possible bugs lurk.
+#endif
+
+	//TODO: This code has never been tested, possible bugs
+	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
+			__func__, __FILE__, __LINE__);
+	tcg_abort();
+
+	switch (memop)
+	{
+	case MO_UB:   *((uint8_t *) addr) = (uint8_t) val;                       break;
+	case MO_SB:   *((uint8_t *) addr) = (uint8_t) ((int8_t) val);            break;
+
+	case MO_LEUW: *((uint16_t *) addr) = (uint16_t) val;                     break;
+	case MO_LEUL: *((uint32_t *) addr) = (uint32_t) val;                     break;
+	case MO_LEQ:  *((uint64_t *) addr) = val;                                break;
+	case MO_LESW: *((int16_t *) addr) = (int16_t) val;                       break;
+	case MO_LESL: *((int32_t *) addr) = (int32_t) val;                       break;
+
+	case MO_BEUW: *((uint16_t *) addr) = bswap16((uint16_t) val);            break;
+	case MO_BEUL: *((uint32_t *) addr) = bswap32((uint32_t) val);            break;
+	case MO_BEQ:  *((uint64_t *) addr) = bswap64(val);                       break;
+	case MO_BESW: *((uint16_t *) addr) = (uint16_t) bswap16s((int16_t) val); break;
+	case MO_BESL: *((uint32_t *) addr) = (uint32_t) bswap32s((int32_t) val); break;
+	default:
+		printf("ERROR: unknown memory operation %d\n", memop);
+		tcg_abort();
+		break;
+	}
+#endif /* CONFIG_SOFTMMU */
 }
 
 
