@@ -592,12 +592,9 @@ uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong 
 		break;
 	}
 #else
-
-#ifdef HOST_WORDS_BIGENDIAN
-#error This code has been written with little endian hosts in mind only. Possible bugs lurk.
-#endif
-
 	//TODO: This code has never been tested, possible bugs
+	//TODO: target_ulong does not necessarily have the same size as a host pointer. What to do?
+	// How do -user systems work if the target and the host have different pointer sizes?
 	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
 			__func__, __FILE__, __LINE__);
 	tcg_abort();
@@ -666,6 +663,8 @@ void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr
 #endif
 
 	//TODO: This code has never been tested, possible bugs
+	//TODO: target_ulong does not necessarily have the same size as a host pointer. What to do?
+	// How do -user systems work if the target and the host have different pointer sizes?
 	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
 			__func__, __FILE__, __LINE__);
 	tcg_abort();
