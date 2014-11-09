@@ -990,8 +990,6 @@ void tcg_gen_qemu_st_i32(TCGv_i32 val, TCGv addr, TCGArg idx, TCGMemOp memop)
     TCGArg *opargs = NULL;
     memop = tcg_canonicalize_memop(memop, 0, 1);
 
-    printf("Generating QEMU STi32\n");
-
 #ifdef CONFIG_TCG_PLUGIN
     if (tcgplugin_intercept_qemu_ldst)  {
     	TCGv_i32 tcg_idx = tcg_const_i32(idx);
@@ -2592,7 +2590,6 @@ static inline int tcg_gen_code_common(TCGContext *s,
                def->nb_oargs, def->nb_iargs, def->nb_cargs);
         //        dump_regs(s);
 #endif
-        printf("Blabla opcode %s\n", def->name);
 
         switch(opc) {
         case INDEX_op_mov_i32:
