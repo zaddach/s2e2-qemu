@@ -44,6 +44,8 @@
 #include "exec/exec-all.h"   /* CPUArchState, TranslationBlock */
 #include "sysemu/sysemu.h"     /* max_cpus */
 
+#include "tcg-plugin-api.h"
+
 
 
 
@@ -298,7 +300,7 @@ void tcg_plugin_register_helpers(TCGContext *s)
 	plgapi_register_helper(s,
 				tcgplugin_helper_post_qemu_ld_i32,
 				"tcgplugin_helper_post_qemu_ld_i32",
-				TCG_CALL_NO_RWG_SE,
+				TCG_CALL_NO_WG_SE,
 				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4) | dh_sizemask(i32, 5));
 	plgapi_register_helper(s,
 				tcgplugin_helper_intercept_qemu_st_i32,
@@ -308,29 +310,29 @@ void tcg_plugin_register_helpers(TCGContext *s)
 	plgapi_register_helper(s,
 				tcgplugin_helper_post_qemu_st_i32,
 				"tcgplugin_helper_post_qemu_ld_i32",
-				TCG_CALL_NO_RWG_SE,
+				TCG_CALL_NO_WG_SE,
 				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 4) | dh_sizemask(i32, 5));
 
 	plgapi_register_helper(s,
-					tcgplugin_helper_intercept_qemu_ld_i64,
-					"tcgplugin_helper_intercept_qemu_ld_i64",
-					0 /* Can modify globals, can have side effects */,
-					dh_sizemask(i32, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3));
-		plgapi_register_helper(s,
-					tcgplugin_helper_post_qemu_ld_i64,
-					"tcgplugin_helper_post_qemu_ld_i64",
-					TCG_CALL_NO_RWG_SE,
-					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
-		plgapi_register_helper(s,
-					tcgplugin_helper_intercept_qemu_st_i64,
-					"tcgplugin_helper_intercept_qemu_st_i64",
-					0 /* Can modify globals, can have side effects */,
-					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
-		plgapi_register_helper(s,
-					tcgplugin_helper_post_qemu_st_i64,
-					"tcgplugin_helper_post_qemu_ld_i64",
-					TCG_CALL_NO_RWG_SE,
-					dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
+				tcgplugin_helper_intercept_qemu_ld_i64,
+				"tcgplugin_helper_intercept_qemu_ld_i64",
+				0 /* Can modify globals, can have side effects */,
+				dh_sizemask(i32, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3));
+	plgapi_register_helper(s,
+				tcgplugin_helper_post_qemu_ld_i64,
+				"tcgplugin_helper_post_qemu_ld_i64",
+				TCG_CALL_NO_WG_SE,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
+	plgapi_register_helper(s,
+				tcgplugin_helper_intercept_qemu_st_i64,
+				"tcgplugin_helper_intercept_qemu_st_i64",
+				0 /* Can modify globals, can have side effects */,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
+	plgapi_register_helper(s,
+				tcgplugin_helper_post_qemu_st_i64,
+				"tcgplugin_helper_post_qemu_ld_i64",
+				TCG_CALL_NO_WG_SE,
+				dh_sizemask(void, 0) | dh_sizemask(ptr, 1) | dh_sizemask(tl, 2) | dh_sizemask(i32, 3) | dh_sizemask(i64, 4) | dh_sizemask(i32, 5));
 	if (tpi.register_helpers)  {
 		tpi.tcg_ctx = s;
 		tpi.register_helpers(&tpi);
@@ -700,5 +702,8 @@ void tcgplugin_helper_post_qemu_st_i32(CPUArchState *env, target_ulong addr, uin
 
 void tcgplugin_helper_post_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
+//#ifdef TARGET_ARM
+//	printf("ST at 0x%0" PRIx32 "\n", (uint32_t) ((CPUARMState *) env)->regs[15]);
+//#endif
 }
 
