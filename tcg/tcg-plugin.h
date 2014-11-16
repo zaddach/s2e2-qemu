@@ -49,6 +49,7 @@
     void tcg_plugin_load(const char *name);
     void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env);
     void tcg_plugin_register_helpers(TCGContext* s);
+    void tcgplugin_shutdown_request(int shutdown_signal, pid_t shutdown_pid);
     void tcg_plugin_cpus_stopped(void);
     void tcg_plugin_register_info(uint64_t pc, CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_before_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock *tb);
@@ -60,6 +61,7 @@
 #   define tcg_plugin_load(dso)
 #   define tcg_plugin_guest_arch_init(cpu_env)
 #   define tcg_plugin_register_helpers(tcg_ctx)
+#   define tcgplugin_shutdown_request(signal, pid)
 #   define tcg_plugin_cpus_stopped()
 #   define tcg_plugin_register_info(pc, env, tb)
 #   define tcg_plugin_before_gen_tb(env, tb)
@@ -117,7 +119,9 @@ typedef void (* tpi_pre_tb_helper_code_t)(const TCGPluginInterface *tpi,
 typedef void (* tpi_pre_tb_helper_data_t)(const TCGPluginInterface *tpi,
                                           TPIHelperInfo info, uint64_t address,
                                           uint64_t *data1, uint64_t *data2);
-typedef void (* tpi_register_helpers)(const TCGPluginInterface *tpi);
+typedef void (* tpi_register_helpers_t)(const TCGPluginInterface *tpi);
+typedef void (* tpi_shutdown_request_t)(const TCGPluginInterface *tpi, int signal, pid_t pid);
+typedef void (* tpi_machine_init_done_t)(const TCGPluginInterface *tpi);
 
 #define TPI_VERSION 3
 struct TCGPluginInterface
@@ -150,7 +154,9 @@ struct TCGPluginInterface
     tpi_pre_tb_helper_data_t pre_tb_helper_data;
     tpi_after_gen_opc_t after_gen_opc;
     tpi_decode_instr_t decode_instr;
-    tpi_register_helpers register_helpers;
+    tpi_register_helpers_t register_helpers;
+    tpi_shutdown_request_t shutdown_request;
+    tpi_machine_init_done_t machine_init_done;
 };
 
 #define TPI_INIT_VERSION(tpi) do {                                     \

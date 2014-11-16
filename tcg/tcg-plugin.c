@@ -54,6 +54,9 @@ bool tcgplugin_monitor_qemu_ldst = 1;
 
 TCGv_ptr tcgplugin_cpu_env;
 
+static Notifier machine_init_done_notifier;
+static void tcgplugin_machine_init_done(Notifier *notifier, void *data);
+
 /* Interface for the TCG plugin.  */
 static TCGPluginInterface tpi;
 
@@ -276,6 +279,9 @@ void tcg_plugin_load(const char *name)
 //    /* Register helper.  */
 //#define GEN_HELPER 2
 //#include "tcg-plugin-helper.h"
+
+    machine_init_done_notifier.notify = &tcgplugin_machine_init_done;
+    qemu_add_machine_init_done_notifier(&machine_init_done_notifier);
 
     done = true;
 
@@ -704,5 +710,19 @@ void tcgplugin_helper_post_qemu_st_i64(CPUArchState *env, target_ulong addr, uin
 //#ifdef TARGET_ARM
 //	printf("ST at 0x%0" PRIx32 "\n", (uint32_t) ((CPUARMState *) env)->regs[15]);
 //#endif
+}
+
+void tcgplugin_shutdown_request(int signal, pid_t pid)
+{
+	if (tpi.shutdown_request)  {
+		tpi.shutdown_request(&tpi, signal, pid);
+	}
+}
+
+static void tcgplugin_machine_init_done(Notifier *notifier, void *data)
+{
+	if (tpi.machine_init_done)  {
+		tpi.machine_init_done(&tpi);
+	}
 }
 
