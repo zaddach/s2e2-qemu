@@ -55,7 +55,9 @@ bool tcgplugin_monitor_qemu_ldst = 1;
 TCGv_ptr tcgplugin_cpu_env;
 
 static Notifier machine_init_done_notifier;
+static Notifier exit_notifier;
 static void tcgplugin_machine_init_done(Notifier *notifier, void *data);
+static void tcgplugin_exit(Notifier *notifier, void *data);
 
 /* Interface for the TCG plugin.  */
 static TCGPluginInterface tpi;
@@ -282,6 +284,9 @@ void tcg_plugin_load(const char *name)
 
     machine_init_done_notifier.notify = &tcgplugin_machine_init_done;
     qemu_add_machine_init_done_notifier(&machine_init_done_notifier);
+
+    exit_notifier.notify = &tcgplugin_exit;
+    qemu_add_exit_notifier(&exit_notifier);
 
     done = true;
 
@@ -723,6 +728,13 @@ static void tcgplugin_machine_init_done(Notifier *notifier, void *data)
 {
 	if (tpi.machine_init_done)  {
 		tpi.machine_init_done(&tpi);
+	}
+}
+
+static void tcgplugin_exit(Notifier *notifier, void *data)
+{
+	if (tpi.exit)  {
+		tpi.exit(&tpi);
 	}
 }
 

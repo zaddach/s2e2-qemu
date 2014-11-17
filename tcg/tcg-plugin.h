@@ -122,6 +122,7 @@ typedef void (* tpi_pre_tb_helper_data_t)(const TCGPluginInterface *tpi,
 typedef void (* tpi_register_helpers_t)(const TCGPluginInterface *tpi);
 typedef void (* tpi_shutdown_request_t)(const TCGPluginInterface *tpi, int signal, pid_t pid);
 typedef void (* tpi_machine_init_done_t)(const TCGPluginInterface *tpi);
+typedef void (* tpi_exit_t)(const TCGPluginInterface *tpi);
 
 #define TPI_VERSION 3
 struct TCGPluginInterface
@@ -157,6 +158,7 @@ struct TCGPluginInterface
     tpi_register_helpers_t register_helpers;
     tpi_shutdown_request_t shutdown_request;
     tpi_machine_init_done_t machine_init_done;
+    tpi_exit_t exit;
 };
 
 #define TPI_INIT_VERSION(tpi) do {                                     \
