@@ -119,6 +119,8 @@ int main(int argc, char **argv)
 #include "qom/object_interfaces.h"
 #include "qapi-event.h"
 
+#include "tcgplugin-hooks.h"
+
 #define DEFAULT_RAM_SIZE 128
 
 #define MAX_VIRTIO_CONSOLES 1
@@ -2904,13 +2906,6 @@ out:
     }
     return 0;
 }
-/* Provide a forward declaration since "tcg/tcg-plugin.h" can't be
- * included here. */
-#ifdef CONFIG_TCG_PLUGIN
-extern void tcg_plugin_load(const char *);
-#else
-#define tcg_plugin_load(a)
-#endif
 
 int main(int argc, char **argv, char **envp)
 {
@@ -3980,6 +3975,9 @@ int main(int argc, char **argv, char **envp)
             }
         }
     }
+
+    tcgplugin_parse_cmdline(argc, argv);
+
     loc_set_none();
 
     os_daemonize();

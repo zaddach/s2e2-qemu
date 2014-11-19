@@ -724,6 +724,13 @@ void tcgplugin_shutdown_request(int signal, pid_t pid)
 	}
 }
 
+void tcgplugin_parse_cmdline(int argc, char ** argv)
+{
+	if (tpi.parse_cmdline)  {
+		tpi.parse_cmdline(&tpi, argc, argv);
+	}
+}
+
 static void tcgplugin_machine_init_done(Notifier *notifier, void *data)
 {
 	if (tpi.machine_init_done)  {

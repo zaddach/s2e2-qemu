@@ -29,6 +29,7 @@
 
 #include "exec/exec-all.h"
 #include "tcg.h"
+#include "tcgplugin-hooks.h"
 
 #ifndef TCG_TARGET_REG_BITS
 #include "tcg.h"
@@ -45,29 +46,19 @@
  */
 
 #ifdef CONFIG_TCG_PLUGIN
-    bool tcg_plugin_enabled(void);
-    void tcg_plugin_load(const char *name);
     void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env);
     void tcg_plugin_register_helpers(TCGContext* s);
-    void tcgplugin_shutdown_request(int shutdown_signal, pid_t shutdown_pid);
-    void tcg_plugin_cpus_stopped(void);
     void tcg_plugin_register_info(uint64_t pc, CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_before_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_after_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_after_gen_opc(TCGOpcode opname, uint16_t *opcode, TCGArg *opargs, uint8_t nb_args);
-    const char *tcg_plugin_get_filename(void);
 #else
-#   define tcg_plugin_enabled() false
-#   define tcg_plugin_load(dso)
 #   define tcg_plugin_guest_arch_init(cpu_env)
 #   define tcg_plugin_register_helpers(tcg_ctx)
-#   define tcgplugin_shutdown_request(signal, pid)
-#   define tcg_plugin_cpus_stopped()
 #   define tcg_plugin_register_info(pc, env, tb)
 #   define tcg_plugin_before_gen_tb(env, tb)
 #   define tcg_plugin_after_gen_tb(env, tb)
 #   define tcg_plugin_after_gen_opc(opname, tcg_opcode, tcg_opargs_, nb_args)
-#   define tcg_plugin_get_filename() "<unknown>"
 #endif /* !CONFIG_TCG_PLUGIN */
 
 /***********************************************************************
@@ -123,6 +114,7 @@ typedef void (* tpi_register_helpers_t)(const TCGPluginInterface *tpi);
 typedef void (* tpi_shutdown_request_t)(const TCGPluginInterface *tpi, int signal, pid_t pid);
 typedef void (* tpi_machine_init_done_t)(const TCGPluginInterface *tpi);
 typedef void (* tpi_exit_t)(const TCGPluginInterface *tpi);
+typedef void (* tpi_parse_cmdline_t)(const TCGPluginInterface *tpi, int argc, char ** argv);
 
 #define TPI_VERSION 3
 struct TCGPluginInterface
@@ -159,6 +151,7 @@ struct TCGPluginInterface
     tpi_shutdown_request_t shutdown_request;
     tpi_machine_init_done_t machine_init_done;
     tpi_exit_t exit;
+    tpi_parse_cmdline_t parse_cmdline;
 };
 
 #define TPI_INIT_VERSION(tpi) do {                                     \
