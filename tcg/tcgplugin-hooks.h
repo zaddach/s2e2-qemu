@@ -20,6 +20,8 @@
     void tcgplugin_parse_cmdline(int argc, char ** argv);
     void tcg_plugin_cpus_stopped(void);
     const char *tcg_plugin_get_filename(void);
+    void tcgplugin_tb_alloc(struct TranslationBlock* tb);
+    void tcgplugin_tb_free(struct TranslationBlock* tb);
 #else
 #   define tcg_plugin_enabled() false
 #   define tcg_plugin_load(dso)
@@ -27,6 +29,8 @@
 #   define tcgplugin_parse_cmdline(argc, argv)
 #   define tcg_plugin_cpus_stopped()
 #   define tcg_plugin_get_filename() "<unknown>"
+#   define tcgplugin_tb_alloc(tb)
+#   define tcgplugin_tb_free(tb)
 #endif /* !CONFIG_TCG_PLUGIN */
 
 

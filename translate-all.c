@@ -719,11 +719,16 @@ static TranslationBlock *tb_alloc(target_ulong pc)
     tb = &tcg_ctx.tb_ctx.tbs[tcg_ctx.tb_ctx.nb_tbs++];
     tb->pc = pc;
     tb->cflags = 0;
+
+    tcgplugin_tb_alloc(tb);
+
     return tb;
 }
 
 void tb_free(TranslationBlock *tb)
 {
+	tcgplugin_tb_free(tb);
+
     /* In practice this is mostly used for single use temporary TB
        Ignore the hard cases and just back up if this TB happens to
        be the last one generated.  */
@@ -793,6 +798,9 @@ void tb_flush(CPUArchState *env1)
         > tcg_ctx.code_gen_buffer_size) {
         cpu_abort(cpu, "Internal error: code buffer overflow\n");
     }
+
+    tcgplugin_tb_flush(&tcg_ctx, env1);
+
     tcg_ctx.tb_ctx.nb_tbs = 0;
 
     CPU_FOREACH(cpu) {

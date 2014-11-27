@@ -52,6 +52,7 @@
     void tcg_plugin_before_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_after_gen_tb(CPUArchState *env, TCGContext *s, TranslationBlock *tb);
     void tcg_plugin_after_gen_opc(TCGOpcode opname, uint16_t *opcode, TCGArg *opargs, uint8_t nb_args);
+    void tcgplugin_tb_flush(TCGContext *tcg_ctx, CPUArchState *env);
 #else
 #   define tcg_plugin_guest_arch_init(cpu_env)
 #   define tcg_plugin_register_helpers(tcg_ctx)
@@ -59,6 +60,7 @@
 #   define tcg_plugin_before_gen_tb(env, tb)
 #   define tcg_plugin_after_gen_tb(env, tb)
 #   define tcg_plugin_after_gen_opc(opname, tcg_opcode, tcg_opargs_, nb_args)
+#   define tcgplugin_tb_flush(tcg_ctx, env)
 #endif /* !CONFIG_TCG_PLUGIN */
 
 /***********************************************************************
@@ -115,6 +117,9 @@ typedef void (* tpi_shutdown_request_t)(const TCGPluginInterface *tpi, int signa
 typedef void (* tpi_machine_init_done_t)(const TCGPluginInterface *tpi);
 typedef void (* tpi_exit_t)(const TCGPluginInterface *tpi);
 typedef void (* tpi_parse_cmdline_t)(const TCGPluginInterface *tpi, int argc, char ** argv);
+typedef void (* tpi_tb_alloc)(const TCGPluginInterface *tpi, TranslationBlock *tb);
+typedef void (* tpi_tb_free)(const TCGPluginInterface *tpi, TranslationBlock *tb);
+typedef void (* tpi_tb_flush)(const TCGPluginInterface *tpi, TCGContext *tcg_ctx, CPUArchState *env);
 
 #define TPI_VERSION 3
 struct TCGPluginInterface
@@ -152,6 +157,9 @@ struct TCGPluginInterface
     tpi_machine_init_done_t machine_init_done;
     tpi_exit_t exit;
     tpi_parse_cmdline_t parse_cmdline;
+    tpi_tb_alloc tb_alloc;
+    tpi_tb_free tb_free;
+    tpi_tb_flush tb_flush;
 };
 
 #define TPI_INIT_VERSION(tpi) do {                                     \

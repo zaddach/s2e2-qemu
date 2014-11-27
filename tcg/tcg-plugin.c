@@ -731,6 +731,27 @@ void tcgplugin_parse_cmdline(int argc, char ** argv)
 	}
 }
 
+void tcgplugin_tb_alloc(TranslationBlock *tb)
+{
+	if (tpi.tb_alloc)  {
+		tpi.tb_alloc(&tpi, tb);
+	}
+}
+
+void tcgplugin_tb_free(TranslationBlock *tb)
+{
+	if (tpi.tb_free)  {
+		tpi.tb_free(&tpi, tb);
+	}
+}
+
+void tcgplugin_tb_flush(TCGContext *tcg_ctx, CPUArchState *env)
+{
+	if (tpi.tb_flush)  {
+		tpi.tb_flush(&tpi, tcg_ctx, env);
+	}
+}
+
 static void tcgplugin_machine_init_done(Notifier *notifier, void *data)
 {
 	if (tpi.machine_init_done)  {
