@@ -12,6 +12,12 @@
 /***********************************************************************
  * The half of the hooks that does not contain guest architecture or TCG specific stuff.
  */
+struct SaveStateEntry *tcgplugin_savevm_handlers_first(void);
+struct SaveStateEntry *tcgplugin_savevm_handlers_next(struct SaveStateEntry *sse);
+struct SaveStateEntry *tcgplugin_savevm_handlers_last(void);
+char const * tcgplugin_savevm_handler_get_idstr(struct SaveStateEntry *sse);
+void tcgplugin_vmstate_save(struct QEMUFile *f, struct SaveStateEntry *sse);
+int tcgplugin_vmstate_load(struct QEMUFile *f, struct SaveStateEntry *sse, int version_id);
 
 #ifdef CONFIG_TCG_PLUGIN
     bool tcg_plugin_enabled(void);

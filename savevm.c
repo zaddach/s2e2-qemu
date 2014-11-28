@@ -42,6 +42,7 @@
 #include "qemu/iov.h"
 #include "block/snapshot.h"
 #include "block/qapi.h"
+#include "tcgplugin-hooks.h"
 
 
 #ifndef ETH_P_RARP
@@ -1351,3 +1352,29 @@ void vmstate_register_ram_global(MemoryRegion *mr)
 {
     vmstate_register_ram(mr, NULL);
 }
+
+#if defined(CONFIG_TCG_PLUGIN)
+SaveStateEntry *tcgplugin_savevm_handlers_first()  {
+	return savevm_handlers.tqh_first;
+}
+
+SaveStateEntry *tcgplugin_savevm_handlers_next(SaveStateEntry *sse) {
+	return sse->entry.tqe_next;
+}
+
+SaveStateEntry *tcgplugin_savevm_handlers_last()  {
+	return *savevm_handlers.tqh_last;
+}
+
+char const * tcgplugin_savevm_handler_get_idstr(SaveStateEntry *sse)  {
+	return sse->idstr;
+}
+
+void tcgplugin_vmstate_save(QEMUFile *f, SaveStateEntry *sse) {
+	vmstate_save(f, sse);
+}
+
+int tcgplugin_vmstate_load(QEMUFile *f, SaveStateEntry *sse, int version_id)  {
+	return vmstate_load(f, sse, version_id);
+}
+#endif /* defined(CONFIG_TCG_PLUGIN) */
