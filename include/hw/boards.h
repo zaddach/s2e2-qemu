@@ -116,6 +116,7 @@ struct MachineState {
     bool kernel_irqchip;
     int kvm_shadow_mem;
     char *dtb;
+    char *hw_dtb;
     char *dumpdtb;
     int phandle_start;
     char *dt_compatible;

@@ -354,6 +354,11 @@ static QemuOptsList qemu_machine_opts = {
             .type = QEMU_OPT_STRING,
             .help = "Linux kernel device tree file",
         }, {
+            .name = "hw-dtb",
+            .type = QEMU_OPT_STRING,
+            .help = "Machine creation device tree file",
+
+        }, {
             .name = "dumpdtb",
             .type = QEMU_OPT_STRING,
             .help = "Dump current dtb to a file and quit",
@@ -3217,6 +3222,8 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_append:
                 qemu_opts_set(qemu_find_opts("machine"), 0, "append", optarg);
                 break;
+            case QEMU_OPTION_hw_dtb:
+                qemu_opts_set(qemu_find_opts("machine"), 0, "hw-dtb", optarg);
             case QEMU_OPTION_dtb:
                 qemu_opts_set(qemu_find_opts("machine"), 0, "dtb", optarg);
                 break;

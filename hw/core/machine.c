@@ -110,6 +110,20 @@ static void machine_set_append(Object *obj, const char *value, Error **errp)
     ms->kernel_cmdline = g_strdup(value);
 }
 
+static char *machine_get_hw_dtb(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return g_strdup(ms->hw_dtb);
+}
+
+static void machine_set_hw_dtb(Object *obj, const char *value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    ms->hw_dtb = g_strdup(value);
+}
+
 static char *machine_get_dtb(Object *obj, Error **errp)
 {
     MachineState *ms = MACHINE(obj);
@@ -253,6 +267,8 @@ static void machine_initfn(Object *obj)
                             machine_get_initrd, machine_set_initrd, NULL);
     object_property_add_str(obj, "append",
                             machine_get_append, machine_set_append, NULL);
+    object_property_add_str(obj, "hw-dtb",
+                            machine_get_hw_dtb, machine_set_hw_dtb, NULL);
     object_property_add_str(obj, "dtb",
                             machine_get_dtb, machine_set_dtb, NULL);
     object_property_add_str(obj, "dumpdtb",

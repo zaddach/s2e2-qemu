@@ -2576,6 +2576,17 @@ Use @var{file1} and @var{file2} as modules and pass arg=foo as parameter to the
 first module.
 ETEXI
 
+DEF("hw-dtb", HAS_ARG, QEMU_OPTION_hw_dtb, \
+    "-hw-dtb file    use 'file' as device tree image\n", QEMU_ARCH_ALL)
+STEXI
+@item -hw-dtb @var{file}
+@findex -hw-dtb
+Use @var{file} as a device tree binary (dtb) image used to create the
+emulated machine. This dtb will not be passed to the kernel, use -dtb
+for that.
+ETEXI
+
+
 DEF("dtb", HAS_ARG, QEMU_OPTION_dtb, \
     "-dtb    file    use 'file' as device tree image\n", QEMU_ARCH_ALL)
 STEXI
