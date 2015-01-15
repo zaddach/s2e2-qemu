@@ -89,6 +89,10 @@ static void dtb_machine_init(MachineState *machine)
     err = hwdtb_fdt_load(hw_dtb_arg, &fdt);
     assert(!err);
 
+    //TODO: Fixup FDT here
+    //e.g., add memory if there is no memory at 0
+    //Check if there is a processor and if not add one
+
     QemuDT *qemu_dt = hwdtb_qemudt_new(&fdt);
     assert(qemu_dt);
 

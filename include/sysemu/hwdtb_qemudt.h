@@ -13,7 +13,7 @@
 
 typedef struct QemuDT QemuDT;
 typedef struct QemuDTNode QemuDTNode;
-typedef int (*QemuDTDeviceInitFunc)(QemuDTNode *);
+typedef int (*QemuDTDeviceInitFunc)(QemuDTNode *, void *);
 
 struct QemuDT
 {
@@ -61,5 +61,25 @@ QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt);
 int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt);
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, void *opaque);
 void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, void *opaque);
+
+/*
+ * GCC, Microsoft C and clang support the __COUNTER__ macro.
+ * If we are on another platform, probably the best we can do is to use the line number.
+ */
+#ifndef __COUNTER__
+#define __COUNTER__ __LINE__
+#endif
+
+#define hwdtb_declare_compatibility(compatibility_name, function, opaque) \
+    static void __attribute__((constructor))                             \
+    register_ ## function ## _ ## __COUNTER__ ## _compatibility()  {       \
+        hwdtb_register_compatibility(compatibility_name, function, opaque); \
+    }
+
+#define hwdtb_declare_device_type(device_type_name, function, opaque)     \
+    static void __attribute__((constructor))                             \
+    register_ ## function ## _ ## __COUNTER__ ## _device_type_name()  {    \
+        hwdtb_register_device_type(device_type_name, function, opaque);     \
+    }
 
 #endif /* HWDTB_QEMUDT_H_ */
