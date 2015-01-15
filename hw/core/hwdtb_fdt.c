@@ -11,51 +11,72 @@
 
 #include <libfdt.h>
 
-int hwdtb_fdt_property_get_first_string(const DeviceTreeProperty *property, DeviceTreeStringIterator *itr)
+bool hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, const char ** data, int * len)
 {
     assert(property);
     assert(itr);
 
-    itr->data = property->data;
-    itr->size = strnlen(itr->data, property->size);
-    if (itr->size < property->size) {
-        itr->size += 1;
+    if (itr->position - property->data >= property->size) {
+        return false;
     }
 
-    return 0;
-}
+    const char *str = (const char *) itr->position;
+    int strsize = strnlen((const char *) itr->position, property->size - (itr->position - property->data));
 
-int hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, DeviceTreeStringIterator *itr)
-{
-    assert(property);
-    assert(itr);
-
-    if ((itr->data - (const char *) property->data) + itr->size < property->size) {
-        itr->data += itr->size;
-        const int remaining_size = property->size - (itr->data - (const char *) property->data);
-        itr->size = strnlen(itr->data, property->size - (itr->data - (const char *) property->data));
-        if (itr->size < remaining_size) {
-            itr->size += 1;
-        }
-
-        return 0;
+    if (data) {
+        *data = str;
+    }
+    if (len) {
+        *len = strsize;
     }
 
-    return -FDT_ERR_NOTFOUND;
+    itr->position += strsize;
+
+    return true;
 }
 
 int hwdtb_fdt_node_get_property(const DeviceTreeNode *node, const char *property_name, DeviceTreeProperty *property)
 {
+    assert(node);
     assert(property_name);
     assert(property);
 
-    property->data = fdt_getprop(node->fdt->data, node->offset, property_name, &property->size);
+    int prop_size;
+    const void *prop_data = fdt_getprop(node->fdt->data, node->offset, property_name, &prop_size);
 
-    if (!property->data) {
-        return property->size;
+    if (!prop_data) {
+        return prop_size;
     }
 
+    property->data = prop_data;
+    property->size = prop_size;
+    property->fdt = node->fdt;
+
     return 0;
+}
+
+int hwdtb_fdt_node_get_property_recursive(const DeviceTreeNode *node, const char *property_name, DeviceTreeProperty *property)
+{
+    assert(node);
+    assert(property_name);
+    assert(property);
+
+    int err = hwdtb_fdt_node_get_property(node, property_name, property);
+
+    if (err) {
+        if (node->offset == 0) { //This is the root node
+            err = -FDT_ERR_NOTFOUND;
+        }
+        else {
+            DeviceTreeNode parent;
+            err = hwdtb_fdt_node_get_parent(node, &parent);
+            if (!err) {
+                err = hwdtb_fdt_node_get_property_recursive(&parent, property_name, property);
+            }
+        }
+    }
+
+    return err;
 }
 
 int hwdtb_fdt_node_get_parent(const DeviceTreeNode *node, DeviceTreeNode *parent)
@@ -63,12 +84,15 @@ int hwdtb_fdt_node_get_parent(const DeviceTreeNode *node, DeviceTreeNode *parent
     assert(node);
     assert(parent);
 
-    parent->fdt = node->fdt;
-
-    parent->offset = fdt_supernode_atdepth_offset(node->fdt->data, node->offset, node->depth - 1, &parent->depth);
-    if (parent->offset < 0) {
-        return parent->offset;
+    int parent_depth;
+    int parent_offset = fdt_supernode_atdepth_offset(node->fdt->data, node->offset, node->depth - 1, &parent_depth);
+    if (parent_offset < 0) {
+        return parent_offset;
     }
+
+    parent->offset = parent_offset;
+    parent->depth = parent_depth;
+    parent->fdt = node->fdt;
 
     return 0;
 }
@@ -156,4 +180,105 @@ int hwdtb_fdt_load(const char *file_path, FlattenedDeviceTree *fdt)
     }
 
     return -FDT_ERR_NOTFOUND;
+}
+
+bool hwdtb_fdt_property_begin(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr)
+{
+    assert(property);
+    assert(itr);
+
+    itr->position = property->data;
+
+    return property->size > 0;
+}
+
+
+#define fdt8_to_host(x) (x)
+#define hwdtb_fdt_property_next_xxx(bits) \
+    bool hwdtb_fdt_property_next_uint ## bits ## (const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint ## bits ## _t *data) { \
+        assert(property); \
+        assert(itr); \
+        assert(data); \
+        assert(itr->position >= property->data); \
+        if (itr->position - property->data > sizeof(uint ## bits ## _t)) { \
+            return -FDT_ERR_TRUNCATED; \
+        } \
+        if (data) { \
+            *data = fdt ## bits ## _to_host(*(const uint ## bits ## _t *) itr->position); \
+        } \
+        itr-> position += sizeof(uint ## bits ## _t); \
+        return 0; \
+    }
+
+bool hwdtb_fdt_property_get_next_uint(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, int size, uint64_t *data)
+{
+    assert(property);
+    assert(itr);
+    assert(data);
+    assert(size == 1 || size == 2 || size == 4 || size == 8);
+    assert(itr->position >= property->data);
+    assert(itr->position + size <= property->data + property->size);
+
+    if (data) {
+        switch (size) {
+        case 1: *data = (uint64_t) *(const uint8_t *) itr->position; break;
+        case 2: *data = (uint64_t) fdt16_to_cpu(*(const uint16_t *) itr->position); break;
+        case 4: *data = (uint64_t) fdt32_to_cpu(*(const uint32_t *) itr->position); break;
+        case 8: *data = (uint64_t) fdt64_to_cpu(*(const uint64_t *) itr->position); break;
+        default: assert(false);
+        }
+    }
+
+    itr->position += size;
+    return itr->position < property->data + property->size;
+}
+
+uint64_t hwdtb_fdt_property_get_uint(const DeviceTreeProperty *property, int size)
+{
+    assert(property);
+    assert(size == 1 || size == 2 || size == 4 || size == 8);
+    assert(property->size == size);
+
+    switch (size) {
+    case 1: return *(const uint8_t *) property->data;
+    case 2: return fdt16_to_cpu(*(const uint16_t *) property->data);
+    case 4: return fdt32_to_cpu(*(const uint32_t *) property->data);
+    case 8: return fdt64_to_cpu(*(const uint64_t *) property->data);
+    default: assert(false);
+    }
+}
+
+int hwdtb_fdt_node_get_property_reg(const DeviceTreeNode *node, uint64_t *address, uint64_t *size)
+{
+    assert(node);
+    assert(address);
+    assert(size);
+
+    DeviceTreeProperty prop_num_address_cells;
+    DeviceTreeProperty prop_num_size_cells;
+    DeviceTreeProperty reg;
+    DeviceTreePropertyIterator itr;
+    uint32_t num_address_cells;
+    uint32_t num_size_cells;
+    int err;
+    bool has_next;
+
+    err = hwdtb_fdt_node_get_property_recursive(node, "#address-cells", &prop_num_address_cells);
+    assert(!err);
+    num_address_cells = hwdtb_fdt_property_get_uint32(&prop_num_address_cells);
+
+    err = hwdtb_fdt_node_get_property_recursive(node, "#size-cells", &prop_num_size_cells);
+    assert(!err);
+    num_size_cells = hwdtb_fdt_property_get_uint32(&prop_num_size_cells);
+
+    err = hwdtb_fdt_node_get_property(node, "reg", &reg);
+    assert(!err);
+
+    has_next = hwdtb_fdt_property_begin(&reg, &itr);
+    assert(has_next);
+    has_next = hwdtb_fdt_property_get_next_uint(&reg, &itr, num_address_cells * 4, address);
+    assert(has_next);
+    has_next = hwdtb_fdt_property_get_next_uint(&reg, &itr, num_size_cells * 4, &size);
+
+    return 0;
 }

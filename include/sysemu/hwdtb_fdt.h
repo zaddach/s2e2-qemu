@@ -12,11 +12,12 @@ typedef struct DeviceTreeStringIterator DeviceTreeStringIterator;
 typedef struct DeviceTreeProperty DeviceTreeProperty;
 typedef struct DeviceTreeNode DeviceTreeNode;
 typedef struct FlattenedDeviceTree FlattenedDeviceTree;
+typedef struct DeviceTreePropertyIterator DeviceTreePropertyIterator;
 
 struct DeviceTreeStringIterator
 {
     /* private */
-    struct FlattenedDeviceTree *fdt;
+    FlattenedDeviceTree *fdt;
     int total_size;
     int offset;
 
@@ -27,9 +28,14 @@ struct DeviceTreeStringIterator
 
 struct DeviceTreeProperty
 {
-    struct FlattenedDeviceTree *fdt;
+    FlattenedDeviceTree *fdt;
     int size;
     const void *data;
+};
+
+struct DeviceTreePropertyIterator
+{
+    const void *position;
 };
 
 struct DeviceTreeNode
@@ -46,9 +52,16 @@ struct FlattenedDeviceTree
     DeviceTreeNode root;
 };
 
-int hwdtb_fdt_property_get_first_string(const DeviceTreeProperty *property, DeviceTreeStringIterator *itr);
-int hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, DeviceTreeStringIterator *itr);
+bool hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, const char ** data, int * len);
 int hwdtb_fdt_node_get_property(const DeviceTreeNode *node, const char *property_name, DeviceTreeProperty *property);
+/**
+ * Recursively searches each node from the current node to the root for the given property.
+ * @param node Current tree node to start search from.
+ * @property_name Name of the property to find.
+ * @property The property will be stored in this variable if found.
+ * @return 0 if the property was found, or and error number < 0 otherwise.
+ */
+int hwdtb_fdt_node_get_property_recursive(const DeviceTreeNode *node, const char *property_name, DeviceTreeProperty *property);
 int hwdtb_fdt_node_get_parent(const DeviceTreeNode *node, DeviceTreeNode *parent);
 int hwdtb_fdt_node_get_first_child(const DeviceTreeNode *node, DeviceTreeNode *child);
 int hwdtb_fdt_node_get_next_child(const DeviceTreeNode *node, DeviceTreeNode *child);
@@ -56,5 +69,62 @@ const char *hwdtb_fdt_node_get_name(const DeviceTreeNode *node);
 const DeviceTreeNode *hwdtb_fdt_get_root(const FlattenedDeviceTree *fdt);
 int hwdtb_fdt_get_num_nodes(const FlattenedDeviceTree *fdt);
 int hwdtb_fdt_load(const char *file_path, FlattenedDeviceTree *fdt);
+bool hwdtb_fdt_property_begin(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr);
+bool hwdtb_fdt_property_get_next_uint(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, int size, uint64_t *data);
 
+static inline bool hwdtb_fdt_property_get_next_uint8(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint8_t *data) {
+    uint64_t tmp;
+    bool has_next = hwdtb_fdt_property_get_next_uint(property, itr, 1, &tmp);
+    if (data) {*data = (uint8_t) tmp;}
+    return has_next;
+}
+
+static inline bool hwdtb_fdt_property_get_next_uint16(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint16_t *data) {
+    uint64_t tmp;
+    bool has_next = hwdtb_fdt_property_get_next_uint(property, itr, 1, &tmp);
+    if (data) {*data = (uint8_t) tmp;}
+    return has_next;
+}
+
+static inline bool hwdtb_fdt_property_get_next_uint32(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint32_t *data) {
+    uint64_t tmp;
+    bool has_next = hwdtb_fdt_property_get_next_uint(property, itr, 1, &tmp);
+    if (data) {*data = (uint8_t) tmp;}
+    return has_next;
+}
+
+static inline bool hwdtb_fdt_property_get_next_uint64(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint64_t *data) {
+    uint64_t tmp;
+    bool has_next = hwdtb_fdt_property_get_next_uint(property, itr, 1, &tmp);
+    if (data) {*data = (uint8_t) tmp;}
+    return has_next;
+}
+
+/**
+ * This function retrieves a single integer from the property.
+ * The property must contain nothing but this integer.
+ * If any error occurs, the function will abort the program.
+ * @param property The property to read.
+ * @param size The size of the integer in bytes.
+ * @ret The integer value.
+ */
+uint64_t hwdtb_fdt_property_get_uint(const DeviceTreeProperty *property, int size);
+
+static inline uint32_t hwdtb_fdt_property_get_uint32(const DeviceTreeProperty *property) {
+    return hwdtb_fdt_property_get_uint(property, 4);
+}
+
+static inline uint64_t hwdtb_fdt_property_get_uint64(const DeviceTreeProperty *property) {
+    return hwdtb_fdt_property_get_uint(property, 8);
+}
+
+static inline uint16_t hwdtb_fdt_property_get_uint16(const DeviceTreeProperty *property) {
+    return hwdtb_fdt_property_get_uint(property, 2);
+}
+
+static inline uint8_t hwdtb_fdt_property_get_uint8(const DeviceTreeProperty *property) {
+    return hwdtb_fdt_property_get_uint(property, 1);
+}
+
+int hwdtb_fdt_node_get_property_reg(const DeviceTreeNode *node, uint64_t *address, uint64_t *size);
 #endif /* HWDTB_FDT_H_ */

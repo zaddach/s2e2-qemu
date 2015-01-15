@@ -98,6 +98,8 @@ static void dtb_machine_init(MachineState *machine)
 
     hwdtb_qemudt_map_init_functions(qemu_dt);
 
+    hwdtb_qemudt_invoke_init(qemu_dt);
+
 //    dtbmachine_fdt_print(&fdt);
 //    dt_fdt_walk(&fdt);
 

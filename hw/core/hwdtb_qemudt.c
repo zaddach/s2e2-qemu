@@ -76,18 +76,19 @@ static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, cons
     }
 
     //For each string in the string array
-    DeviceTreeStringIterator itr;
-    err = hwdtb_fdt_property_get_first_string(&property, &itr);
-    while (!err) {
+    DeviceTreePropertyIterator itr;
+    const char *string = NULL;
+    bool has_next = hwdtb_fdt_property_begin(&property, &itr);
+    while (has_next) {
+        has_next = hwdtb_fdt_property_get_next_string(&property, &itr, &string, NULL);
+
         //Check the compatibility database for a match
-        InitData *init_data = (InitData *) g_hash_table_lookup(mapping, itr.data);
+        InitData *init_data = (InitData *) g_hash_table_lookup(mapping, string);
         if (init_data && init_data->init_func) {
             node->init_function = init_data->init_func;
             node->init_function_opaque = init_data->opaque;
             return true;
         }
-
-        err = hwdtb_fdt_property_get_next_string(&property, &itr);
     }
 
     return false;
@@ -167,6 +168,56 @@ static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, void *op
     g_hash_table_insert(*mapping, (gpointer) name, init_data);
 }
 
+static int hwdtb_qemudt_node_invoke_init(QemuDTNode *node)
+{
+    assert(node);
+
+    //TODO: unfinished
+
+    if (node->init_function && !node->is_initialized) {
+        int err = node->init_function(node, node->init_function_opaque);
+    }
+
+    QemuDTNode *child = node->first_child;
+    while (child) {
+        hwdtb_qemudt_node_invoke_init(child);
+        child = child->next_sibling;
+    }
+
+    return 0;
+}
+
+static QemuDTNode * hwdtb_qemudt_node_find_phandle(QemuDTNode *node, uint32_t phandle)
+{
+    DeviceTreeProperty property;
+    QemuDTNode *found_node = NULL;
+    int err = hwdtb_fdt_node_get_property(&node->dt_node, "linux,phandle", &property);
+
+    if (err) {
+        err = hwdtb_fdt_node_get_property(&node->dt_node, "phandle", &property);
+    }
+
+    if (!err) {
+        uint32_t node_phandle = hwdtb_fdt_property_get_uint32(&property);
+        if (node_phandle == phandle) {
+            found_node = node;
+        }
+    }
+
+    if (!found_node) {
+        QemuDTNode *child = node->first_child;
+        while (child) {
+            found_node = hwdtb_qemudt_node_find_phandle(child, phandle);
+            if (found_node) {
+                break;
+            }
+            child = child->next_sibling;
+        }
+    }
+
+    return found_node;
+}
+
 QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt)
 {
     QemuDT *qemu_dt = g_new0(QemuDT, 1);
@@ -178,7 +229,11 @@ QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt)
     qemu_dt->nodes = g_new0(QemuDTNode, qemu_dt->num_nodes);
     qemu_dt->free_node_idx = 0;
     qemu_dt->root = NULL;
-    memcpy(&qemu_dt->fdt, fdt, sizeof(FlattenedDeviceTree));
+    qemu_dt->fdt.data = fdt->data;
+    qemu_dt->fdt.size = fdt->size;
+    qemu_dt->fdt.root.depth = fdt->root.depth;
+    qemu_dt->fdt.root.offset = fdt->root.offset;
+    qemu_dt->fdt.root.fdt = &qemu_dt->fdt;
 
     qemu_dt->root = hwdtb_qemudt_node_from_dt_node(qemu_dt, hwdtb_fdt_get_root(fdt));
 
@@ -192,6 +247,20 @@ int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt)
     return hwdtb_qemudt_node_map_init(qemu_dt->root);
 }
 
+int hwdtb_qemudt_invoke_init(QemuDT *qemu_dt)
+{
+    assert(qemu_dt);
+
+    return hwdtb_qemudt_node_invoke_init(qemu_dt->root);
+
+    //TODO: unfinished function
+}
+
+QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemu_dt, uint32_t phandle)
+{
+    return hwdtb_qemudt_node_find_phandle(qemu_dt->root, phandle);
+}
+
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, void *opaque)
 {
     hwdtb_register(name, func, opaque, &compatibility_table);
@@ -201,6 +270,4 @@ void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, voi
 {
     hwdtb_register(name, func, opaque, &device_type_table);
 }
-
-
 
