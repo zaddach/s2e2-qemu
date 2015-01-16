@@ -15,6 +15,7 @@ typedef enum QemuDTDeviceInitReturnCode QemuDTDeviceInitReturnCode;
 typedef struct QemuDT QemuDT;
 typedef struct QemuDTNode QemuDTNode;
 typedef QemuDTDeviceInitReturnCode (*QemuDTDeviceInitFunc)(QemuDTNode *, void *);
+typedef enum QemuDTInitFunctionSource QemuDTInitFunctionSource;
 
 enum QemuDTDeviceInitReturnCode
 {
@@ -23,6 +24,12 @@ enum QemuDTDeviceInitReturnCode
     QEMUDT_DEVICE_INIT_UNKNOWN, /* This device is unknown and cannot be initialized */
     QEMUDT_DEVICE_INIT_ERROR, /* An error occured while initializing the device */
     QEMUDT_DEVICE_INIT_NOTPRESENT, /* The user's configuration supresses this device.  */
+};
+
+enum QemuDTInitFunctionSource
+{
+    QEMUDT_INITFN_SOURCE_COMPATIBILITY,
+    QEMUDT_INITFN_SOURCE_DEVICE_TYPE
 };
 
 struct QemuDT
@@ -67,11 +74,15 @@ struct QemuDTNode
      * Argument for the initialization function.
      */
     void *init_function_opaque;
+    /** Name of the init function (for logging purposes) */
+    const char *init_function_name;
+    /** Which criterion was used when finding the init function */
+    QemuDTInitFunctionSource init_function_source;
 };
 
 QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt);
 int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt);
-int hwdtb_qemudt_invoke_init(QemuDT *qemu_dt);
+void hwdtb_qemudt_invoke_init(QemuDT *qemu_dt);
 QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemuDT, uint32_t phandle);
 int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, uint64_t *value);
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque);

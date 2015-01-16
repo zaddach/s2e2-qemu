@@ -13,7 +13,11 @@
 #define DEBUG_PRINTF(str, ...) fprintf(stderr, "%s:%d - %s:  " str, __FILE__, __LINE__, __func__, __VA_ARGS__)
 
 static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt);
-static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, const char *property_name, GHashTable *mapping);
+static bool hwdtb_qemudt_node_map_init_by_string_property(
+        QemuDTNode *node,
+        const char *property_name,
+        GHashTable *mapping,
+        QemuDTInitFunctionSource init_func_source);
 static QemuDTNode * hwdtb_qemudt_node_from_dt_node(QemuDT *qemu_dt, const DeviceTreeNode *dt_node);
 static int hwdtb_qemudt_node_map_init(QemuDTNode *node);
 static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, GHashTable **mapping);
@@ -60,7 +64,11 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt)
     return qemudt_node;
 }
 
-static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, const char *property_name, GHashTable *mapping)
+static bool hwdtb_qemudt_node_map_init_by_string_property(
+        QemuDTNode *node,
+        const char *property_name,
+        GHashTable *mapping,
+        QemuDTInitFunctionSource init_func_source)
 {
     DEBUG_PRINTF("Mapping property %s of node %s\n", property_name, hwdtb_fdt_node_get_name(&node->dt_node));
 
@@ -91,6 +99,8 @@ static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, cons
         if (init_data && init_data->init_func) {
             node->init_function = init_data->init_func;
             node->init_function_opaque = init_data->opaque;
+            node->init_function_source = init_func_source;
+            node->init_function_name = init_data->init_func_name;
             return true;
         }
     }
@@ -138,9 +148,17 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
     //Do not try to initialize the root node
     if (node->parent) {
         /* Map device node to qemu initialization function */
-        bool mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "compatible", compatibility_table);
+        bool mapped = hwdtb_qemudt_node_map_init_by_string_property(
+                node,
+                "compatible",
+                compatibility_table,
+                QEMUDT_INITFN_SOURCE_COMPATIBILITY);
         if (!mapped) {
-            mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "device_type", device_type_table);
+            mapped = hwdtb_qemudt_node_map_init_by_string_property(
+                    node,
+                    "device_type",
+                    device_type_table,
+                    QEMUDT_INITFN_SOURCE_DEVICE_TYPE);
         }
 
         assert(!mapped || node->init_function);
@@ -176,23 +194,57 @@ static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const ch
     g_hash_table_insert(*mapping, (gpointer) name, init_data);
 }
 
-static int hwdtb_qemudt_node_invoke_init(QemuDTNode *node)
+
+/**
+ * Initialize this node, and if initialization was successful, initialize children.
+ * @param node Qemu DeviceTree node to initialize.
+ * @return <b>false</b> if the node needs to be visited again, <b>true</b> if initialization is finished.
+ */
+static bool hwdtb_qemudt_node_invoke_init(QemuDTNode *node)
 {
     assert(node);
 
+    bool revisit = false;
+
     //TODO: unfinished
 
-    if (node->init_function && !node->is_initialized) {
-        int err = node->init_function(node, node->init_function_opaque);
+    if (node->init_function && !node->is_initialized && !node->ignore) {
+        QemuDTDeviceInitReturnCode ret = node->init_function(node, node->init_function_opaque);
+        switch (ret) {
+        case QEMUDT_DEVICE_INIT_SUCCESS:
+            fprintf(stderr, "INFO: Successfully initialized device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            node->is_initialized = true;
+            break;
+        case QEMUDT_DEVICE_INIT_ERROR:
+            fprintf(stderr, "ERROR: Failed to initialize device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            node->ignore = true;
+            break;
+        case QEMUDT_DEVICE_INIT_NOTPRESENT:
+            fprintf(stderr, "INFO: Device tree node %s marked to be skipped in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            node->ignore = true;
+            break;
+        case QEMUDT_DEVICE_INIT_UNKNOWN:
+            fprintf(stderr, "WARN: Unknown device in device tree node %s, init function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            node->ignore = true;
+            break;
+        case QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED:
+            revisit = true;
+            break;
+        default:
+            assert(false);
+            break;
+        }
     }
 
-    QemuDTNode *child = node->first_child;
-    while (child) {
-        hwdtb_qemudt_node_invoke_init(child);
-        child = child->next_sibling;
+    if (node->is_initialized && !node->ignore) {
+        QemuDTNode *child = node->first_child;
+        while (child) {
+            revisit |= hwdtb_qemudt_node_invoke_init(child);
+            child = child->next_sibling;
+        }
     }
 
-    return 0;
+    return !revisit;
 }
 
 static QemuDTNode * hwdtb_qemudt_node_find_phandle(QemuDTNode *node, uint32_t phandle)
@@ -255,13 +307,15 @@ int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt)
     return hwdtb_qemudt_node_map_init(qemu_dt->root);
 }
 
-int hwdtb_qemudt_invoke_init(QemuDT *qemu_dt)
+void hwdtb_qemudt_invoke_init(QemuDT *qemu_dt)
 {
     assert(qemu_dt);
 
-    return hwdtb_qemudt_node_invoke_init(qemu_dt->root);
-
-    //TODO: unfinished function: needs to check all initializable nodes have been initialized
+    /* Perform a fixed point iteration until all nodes including their dependencies are initialized. */
+    bool done = false;
+    while (!done) {
+        done = hwdtb_qemudt_node_invoke_init(qemu_dt->root);
+    }
 }
 
 QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemu_dt, uint32_t phandle)
