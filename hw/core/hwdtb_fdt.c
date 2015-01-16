@@ -45,7 +45,6 @@ int hwdtb_fdt_node_get_property(const DeviceTreeNode *node, const char *property
 {
     assert(node);
     assert(property_name);
-    assert(property);
 
     int prop_size;
     const void *prop_data = fdt_getprop(node->fdt->data, node->offset, property_name, &prop_size);
@@ -54,9 +53,11 @@ int hwdtb_fdt_node_get_property(const DeviceTreeNode *node, const char *property
         return prop_size;
     }
 
-    property->data = prop_data;
-    property->size = prop_size;
-    property->fdt = node->fdt;
+    if (property) {
+        property->data = prop_data;
+        property->size = prop_size;
+        property->fdt = node->fdt;
+    }
 
     return 0;
 }
