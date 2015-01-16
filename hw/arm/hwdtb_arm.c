@@ -14,7 +14,10 @@
 
 #include <libfdt.h>
 
+
 #define RAM_NAME_LENGTH 20
+
+#define min(x, y) ((x) <= (y) ? (x) : (y))
 
 #define TYPE_SMC91C111 "smc91c111"
 #define TYPE_INTEGRATOR_PIC "integrator_pic"
@@ -287,6 +290,33 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_arm_versatile_fpga_ir
     return QEMUDT_DEVICE_INIT_SUCCESS;
 }
 
+static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_cpu(QemuDTNode *node, void *opaque)
+{
+    assert(node);
+    assert(opaque);
+
+    const char *cpu_name = opaque;
+
+    DeviceTreeProperty device_type;
+
+    int err = hwdtb_fdt_node_get_property(&node->dt_node, "device_type", &device_type);
+    if (err) {
+        fprintf(stderr, "ERROR: CPU does not have device tree property 'device_type'\n");
+        return QEMUDT_DEVICE_INIT_ERROR;
+    }
+
+    if (strncmp((const char *) device_type.data, "cpu", min(device_type.size, 4))) {
+        fprintf(stderr, "ERROR: CPU's device tree property 'device_type' is not 'cpu'\n");
+        return QEMUDT_DEVICE_INIT_ERROR;
+    }
+
+    ARMCPU *cpu = cpu_arm_init(cpu_name);
+    assert(cpu);
+
+    node->qemu_device = (DeviceState *) cpu;
+    return QEMUDT_DEVICE_INIT_SUCCESS;
+}
+
 static QemuDTDeviceInitReturnCode hwdtb_init_device_type_memory(QemuDTNode *node, void *opaque)
 {
     MemoryRegion *ram = g_new0(MemoryRegion, 1);
@@ -345,5 +375,8 @@ hwdtb_declare_compatibility("arm,pl180", hwdtb_init_compatibility_sysbus_device,
 hwdtb_declare_compatibility("arm,sp804", hwdtb_init_compatibility_sysbus_device, (void *) "sp804")
 hwdtb_declare_compatibility("arm,pl050", hwdtb_init_compatibility_pl050, NULL)
 hwdtb_declare_compatibility("smsc,lan91c111", hwdtb_init_compatilibility_smsc_lan91c111, NULL);
+
+
+hwdtb_declare_compatibility("arm,arm1136", hwdtb_init_compatibility_cpu, (void *) "arm1136")
 hwdtb_declare_compatibility("arm,integrator-cp-timer", hwdtb_init_compatibility_arm_integrator_cp_timer, NULL);
 
