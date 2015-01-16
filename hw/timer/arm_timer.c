@@ -367,6 +367,88 @@ static int icp_pit_init(SysBusDevice *dev)
     return 0;
 }
 
+/* Integrator/CP timer module. Each timer is an individual device, used for device tree.  */
+
+#define TYPE_INTEGRATOR_CP_TIMER "integrator_cp_timer"
+#define INTEGRATOR_CP_TIMER(obj) \
+    OBJECT_CHECK(integrator_cp_timer_state, (obj), TYPE_INTEGRATOR_CP_TIMER)
+
+typedef struct {
+    /* private */
+    SysBusDevice parent_obj;
+
+    /* public */
+    MemoryRegion iomem;
+    arm_timer_state *timer;
+    uint32_t freq;
+} integrator_cp_timer_state;
+
+static uint64_t integrator_cp_timer_read(void *opaque, hwaddr offset,
+                             unsigned size)
+{
+    icp_pit_state *s = (icp_pit_state *)opaque;
+
+    /* ??? Don't know the PrimeCell ID for this device.  */
+    if (offset >> 8) {
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad timer offset %d\n", __func__, (int) offset);
+        return 0;
+    }
+
+    return arm_timer_read(s->timer, offset & 0xff);
+}
+
+static void integrator_cp_timer_write(void *opaque, hwaddr offset,
+                          uint64_t value, unsigned size)
+{
+    icp_pit_state *s = (icp_pit_state *)opaque;
+
+    if (offset >> 8) {
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad timer offset %d\n", __func__, (int) offset);
+        return;
+    }
+
+    arm_timer_write(s->timer, offset & 0xff, value);
+}
+
+static const MemoryRegionOps integrator_cp_timer_ops = {
+    .read = integrator_cp_timer_read,
+    .write = integrator_cp_timer_write,
+    .endianness = DEVICE_NATIVE_ENDIAN,
+};
+
+int integrator_cp_timer_init(SysBusDevice *dev)
+{
+    integrator_cp_timer_state *s = INTEGRATOR_CP_TIMER(dev);
+
+    s->timer = arm_timer_init(s->freq);
+    sysbus_init_irq(dev, &s->timer->irq);
+
+    memory_region_init_io(&s->iomem, OBJECT(s), &integrator_cp_timer_ops, s,
+                              "integrator_cp_timer", 0x100);
+    sysbus_init_mmio(dev, &s->iomem);
+
+    return 0;
+}
+
+static Property arm_timer_properties[] = {
+    DEFINE_PROP_UINT32("freq", integrator_cp_timer_state, freq, 1000000),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void integrator_cp_timer_class_init(ObjectClass *klass, void *data)
+{
+    SysBusDeviceClass *sdc = SYS_BUS_DEVICE_CLASS(klass);
+
+    sdc->init = integrator_cp_timer_init;
+}
+
+static const TypeInfo integrator_cp_timer_info = {
+    .name          = TYPE_INTEGRATOR_CP_TIMER,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(integrator_cp_timer_state),
+    .class_init    = integrator_cp_timer_class_init,
+};
+
 static void icp_pit_class_init(ObjectClass *klass, void *data)
 {
     SysBusDeviceClass *sdc = SYS_BUS_DEVICE_CLASS(klass);
@@ -405,6 +487,7 @@ static const TypeInfo sp804_info = {
 
 static void arm_timer_register_types(void)
 {
+    type_register_static(&integrator_cp_timer_info);
     type_register_static(&icp_pit_info);
     type_register_static(&sp804_info);
 }

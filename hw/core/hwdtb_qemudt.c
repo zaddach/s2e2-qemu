@@ -50,6 +50,7 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt)
     qemudt_node->first_child = NULL;
     qemudt_node->next_sibling = NULL;
     qemudt_node->is_initialized = false;
+    qemudt_node->ignore = false;
     qemudt_node->init_function = NULL;
     qemudt_node->init_function_opaque = NULL;
     qemudt_node->qemu_device = NULL;
@@ -81,6 +82,8 @@ static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, cons
     bool has_next = hwdtb_fdt_property_begin(&property, &itr);
     while (has_next) {
         has_next = hwdtb_fdt_property_get_next_string(&property, &itr, &string, NULL);
+
+        DEBUG_PRINTF("trying to find handler for string %s\n", string);
 
         //Check the compatibility database for a match
         InitData *init_data = (InitData *) g_hash_table_lookup(mapping, string);
@@ -131,13 +134,16 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
 {
     assert(node);
 
-    /* Map device node to qemu initialization function */
-    bool mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "compatible", compatibility_table);
-    if (!mapped) {
-        mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "device_type", device_type_table);
-    }
+    //Do not try to initialize the root node
+    if (node->parent) {
+        /* Map device node to qemu initialization function */
+        bool mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "compatible", compatibility_table);
+        if (!mapped) {
+            mapped = hwdtb_qemudt_node_map_init_by_string_property(node, "device_type", device_type_table);
+        }
 
-    assert(!mapped || node->init_function);
+        assert(!mapped || node->init_function);
+    }
 
     /* Do the same for all children */
     QemuDTNode *child = node->first_child;
@@ -253,12 +259,44 @@ int hwdtb_qemudt_invoke_init(QemuDT *qemu_dt)
 
     return hwdtb_qemudt_node_invoke_init(qemu_dt->root);
 
-    //TODO: unfinished function
+    //TODO: unfinished function: needs to check all initializable nodes have been initialized
 }
 
 QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemu_dt, uint32_t phandle)
 {
+    assert(qemu_dt);
+
     return hwdtb_qemudt_node_find_phandle(qemu_dt->root, phandle);
+}
+
+int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, uint64_t *value)
+{
+    assert(qemu_dt);
+    assert(value);
+
+    QemuDTNode *clock_node = hwdtb_qemudt_find_phandle(qemu_dt, clock_phandle);
+    assert(clock_node);
+
+    if (hwdtb_fdt_node_is_compatible(&clock_node->dt_node, "fixed-clock")) {
+        DeviceTreeProperty prop_num_clock_cells;
+        DeviceTreeProperty prop_clock_frequency;
+        int err;
+
+        /* If the #clock-cells property is present, check that it is 0 */
+        err = hwdtb_fdt_node_get_property(&clock_node->dt_node, "#clock-cells", &prop_num_clock_cells);
+        if (!err) {
+            assert(hwdtb_fdt_property_get_uint32(&prop_num_clock_cells) == 0);
+        }
+
+        err = hwdtb_fdt_node_get_property(&clock_node->dt_node, "clock-frequency", &prop_clock_frequency);
+        assert(!err);
+
+        *value = hwdtb_fdt_property_get_uint32(&prop_clock_frequency);
+        return 0;
+    }
+    else {
+        assert(false && "Not implemented");
+    }
 }
 
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, void *opaque)

@@ -127,4 +127,22 @@ static inline uint8_t hwdtb_fdt_property_get_uint8(const DeviceTreeProperty *pro
 }
 
 int hwdtb_fdt_node_get_property_reg(const DeviceTreeNode *node, uint64_t *address, uint64_t *size);
+bool hwdtb_fdt_node_is_compatible(const DeviceTreeNode *node, const char *compatibility);
+/**
+ * Get a node by absolute path.
+ * @param fdt Flattened device tree containing the node.
+ * @param path Path of the node.
+ * @param node Node structure where the found node will be stored in.
+ * @return 0 on success or a standard libfdt error code.
+ */
+int hwdtb_fdt_node_from_path(const FlattenedDeviceTree *fdt, const char *path, DeviceTreeNode *node);
+/**
+ * This method will add ram memory to the flattened device tree.
+ * Existing memory regions will be preserved. If the new memory region overlaps with or neighbors an existing
+ * region, the two will be merged.
+ * @param fdt The device tree where the memory will be added.
+ * @param address Start address of the ram memory to add.
+ * @param size Size of the memory region to add.
+ */
+int hwdtb_fdt_add_memory(FlattenedDeviceTree *fdt, uint64_t address, uint64_t size);
 #endif /* HWDTB_FDT_H_ */

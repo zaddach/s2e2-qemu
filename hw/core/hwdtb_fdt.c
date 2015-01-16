@@ -30,9 +30,9 @@ bool hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, Devi
         *len = strsize;
     }
 
-    itr->position += strsize;
+    itr->position += strsize + 1;
 
-    return true;
+    return itr->position < property->data + property->size;
 }
 
 int hwdtb_fdt_node_get_property(const DeviceTreeNode *node, const char *property_name, DeviceTreeProperty *property)
@@ -192,24 +192,6 @@ bool hwdtb_fdt_property_begin(const DeviceTreeProperty *property, DeviceTreeProp
     return property->size > 0;
 }
 
-
-#define fdt8_to_host(x) (x)
-#define hwdtb_fdt_property_next_xxx(bits) \
-    bool hwdtb_fdt_property_next_uint ## bits ## (const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, uint ## bits ## _t *data) { \
-        assert(property); \
-        assert(itr); \
-        assert(data); \
-        assert(itr->position >= property->data); \
-        if (itr->position - property->data > sizeof(uint ## bits ## _t)) { \
-            return -FDT_ERR_TRUNCATED; \
-        } \
-        if (data) { \
-            *data = fdt ## bits ## _to_host(*(const uint ## bits ## _t *) itr->position); \
-        } \
-        itr-> position += sizeof(uint ## bits ## _t); \
-        return 0; \
-    }
-
 bool hwdtb_fdt_property_get_next_uint(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, int size, uint64_t *data)
 {
     assert(property);
@@ -278,7 +260,238 @@ int hwdtb_fdt_node_get_property_reg(const DeviceTreeNode *node, uint64_t *addres
     assert(has_next);
     has_next = hwdtb_fdt_property_get_next_uint(&reg, &itr, num_address_cells * 4, address);
     assert(has_next);
-    has_next = hwdtb_fdt_property_get_next_uint(&reg, &itr, num_size_cells * 4, &size);
+    has_next = hwdtb_fdt_property_get_next_uint(&reg, &itr, num_size_cells * 4, size);
 
     return 0;
 }
+
+bool hwdtb_fdt_node_is_compatible(const DeviceTreeNode *node, const char *compatibility)
+{
+    assert(node);
+    assert(compatibility);
+
+    DeviceTreeProperty prop_compatible;
+    DeviceTreePropertyIterator propitr_compatible;
+    int err;
+    bool has_next;
+
+    err = hwdtb_fdt_node_get_property(node, "compatible", &prop_compatible);
+    if (err) {
+        return false;
+    }
+
+    has_next = hwdtb_fdt_property_begin(&prop_compatible, &propitr_compatible);
+    while (has_next) {
+        const char *next_compatibility;
+        int next_compatibility_len;
+        has_next = hwdtb_fdt_property_get_next_string(&prop_compatible, &propitr_compatible, &next_compatibility, &next_compatibility_len);
+        if (!strncmp(compatibility, next_compatibility, next_compatibility_len) && next_compatibility_len > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int hwdtb_fdt_node_from_path(const FlattenedDeviceTree *fdt, const char *path, DeviceTreeNode *node)
+{
+    assert(fdt);
+    assert(path);
+    assert(node);
+
+    int offset = fdt_path_offset(fdt->data, path);
+    if (offset < 0) {
+        return offset;
+    }
+
+    int depth = fdt_node_depth(fdt->data, offset);
+    if (depth < 0) {
+        return depth;
+    }
+
+    node->fdt = (FlattenedDeviceTree *) fdt;
+    node->offset = offset;
+    node->depth = depth;
+
+    return 0;
+}
+
+typedef struct DeviceTreeMemoryRegion DeviceTreeMemoryRegion;
+
+struct DeviceTreeMemoryRegion {
+    uint64_t address;
+    uint64_t size;
+    DeviceTreeMemoryRegion *next;
+
+};
+
+int hwdtb_fdt_add_memory(FlattenedDeviceTree *fdt, uint64_t region_address, uint64_t region_size)
+{
+    assert(fdt);
+
+    if (region_size == 0) {
+        return 0;
+    }
+
+    DeviceTreeNode memory;
+
+    int err = hwdtb_fdt_node_from_path(fdt, "/memory", &memory);
+    if (err) {
+        return err;
+    }
+
+    /* Get number of cells for memory addresses and sizes */
+    DeviceTreeProperty prop_num_address_cells;
+    DeviceTreeProperty prop_num_size_cells;
+    uint32_t num_address_cells;
+    uint32_t num_size_cells;
+
+    err = hwdtb_fdt_node_get_property_recursive(&memory, "#address-cells", &prop_num_address_cells);
+    if (err) {
+        return err;
+    }
+    err = hwdtb_fdt_node_get_property_recursive(&memory, "#size-cells", &prop_num_size_cells);
+    if (err) {
+        return err;
+    }
+    num_address_cells = hwdtb_fdt_property_get_uint32(&prop_num_address_cells);
+    num_size_cells = hwdtb_fdt_property_get_uint32(&prop_num_size_cells);
+
+    /* Get linked list of memory regions to facilitate insertion and merging */
+    DeviceTreeProperty prop_reg;
+    DeviceTreePropertyIterator propitr_reg;
+    DeviceTreeMemoryRegion *mem_regions = NULL;
+    assert(mem_regions);
+
+    err = hwdtb_fdt_node_get_property(&memory, "reg", &prop_reg);
+    if (err) {
+        return err;
+    }
+
+    bool has_next = hwdtb_fdt_property_begin(&prop_reg, &propitr_reg);
+    DeviceTreeMemoryRegion ** next_ptr = &mem_regions;
+    while (has_next) {
+        uint64_t address;
+        uint64_t size;
+
+        has_next = hwdtb_fdt_property_get_next_uint(&prop_reg, &propitr_reg, num_address_cells * 4, &address);
+        if (!has_next) {
+            return -FDT_ERR_BADSTRUCTURE;
+        }
+        has_next = hwdtb_fdt_property_get_next_uint(&prop_reg, &propitr_reg, num_size_cells * 4, &size);
+        *next_ptr = g_new0(DeviceTreeMemoryRegion, 1);
+        assert(*next_ptr);
+
+        (*next_ptr)->address = address;
+        (*next_ptr)->size = size;
+        (*next_ptr)->next = NULL;
+
+        next_ptr = &(*next_ptr)->next;
+    }
+
+    /* We assume that memory regions are already ordered in the device tree */
+    /* Insert new region */
+    next_ptr = &mem_regions;
+    while (*next_ptr) {
+        DeviceTreeMemoryRegion ** cur_ptr = next_ptr;
+        next_ptr = &(*cur_ptr)->next;
+
+        if (!*next_ptr || (*next_ptr)->address >= region_address) {
+            DeviceTreeMemoryRegion *tmp = *next_ptr;
+            *next_ptr = g_new0(DeviceTreeMemoryRegion, 1);
+            assert(*next_ptr);
+
+            (*next_ptr)->address = region_address;
+            (*next_ptr)->size = region_size;
+            (*next_ptr)->next = tmp;
+
+            break;
+        }
+    }
+
+    /* Make sure that memory regions don't overlap */
+    next_ptr = &mem_regions;
+    while (*next_ptr) {
+        DeviceTreeMemoryRegion ** cur_ptr = next_ptr;
+        next_ptr = &(*cur_ptr)->next;
+
+        if (*next_ptr) {
+            bool merge = false;
+            uint64_t address;
+            uint64_t size;
+
+            /* Just to be sure that the list is weakly ordered */
+            assert((*cur_ptr)->address <= (*next_ptr)->address);
+
+            if ((*cur_ptr)->address + (*cur_ptr)->size >= (*next_ptr)->address &&
+                    (*cur_ptr)->address + (*cur_ptr)->size <= (*next_ptr)->address + (*next_ptr)->size) {
+                merge = true;
+                address = (*cur_ptr)->address;
+                size = (*next_ptr)->address + (*next_ptr)->size - (*cur_ptr)->address;
+            }
+            else if ((*cur_ptr)->address + (*cur_ptr)->size >= (*next_ptr)->address &&
+                    (*cur_ptr)->address + (*cur_ptr)->size > (*next_ptr)->address + (*next_ptr)->size) {
+                merge = true;
+                address = (*cur_ptr)->address;
+                size = (*cur_ptr)->size;
+            }
+
+            if (merge) {
+                (*cur_ptr)->address = address;
+                (*cur_ptr)->size = size;
+                (*cur_ptr)->next = (*next_ptr)->next;
+                g_free(*next_ptr);
+                next_ptr =  &(*cur_ptr)->next;
+             }
+        }
+    }
+
+    /* Count number of memory regions */
+    int num_regions = 0;
+    DeviceTreeMemoryRegion *next = mem_regions;
+    while (next) {
+        num_regions += 1;
+        next = next->next;
+    }
+
+    /* Reserve new space for reg property and pack regions */
+    const unsigned property_size = num_regions * (num_address_cells * 4 + num_size_cells * 4);
+    assert(property_size <= (unsigned)(int)-1);
+    void *property_data = g_malloc0(property_size);
+    assert(property_data);
+
+    next = mem_regions;
+    unsigned property_data_idx = 0;
+    while (next) {
+        switch (num_address_cells) {
+        case 1: *(uint32_t *) (property_data + property_data_idx) = cpu_to_fdt32(next->address); break;
+        case 2: *(uint64_t *) (property_data + property_data_idx) = cpu_to_fdt64(next->address); break;
+        default: assert(false);
+        }
+
+        property_data_idx += num_address_cells * 4;
+
+        switch (num_size_cells) {
+        case 1: *(uint32_t *) (property_data + property_data_idx) = cpu_to_fdt32(next->size); break;
+        case 2: *(uint64_t *) (property_data + property_data_idx) = cpu_to_fdt64(next->size); break;
+        default: assert(false);
+        }
+
+        property_data_idx += num_size_cells * 4;
+
+        DeviceTreeMemoryRegion *tmp = next->next;
+        g_free(next);
+        next = tmp;
+    }
+    mem_regions = NULL;
+
+    err = fdt_setprop(fdt->data, memory.offset, "reg", property_data, property_size);
+    g_free(property_data);
+
+    if (err) {
+        return err;
+    }
+
+    return 0;
+}
+

@@ -22,6 +22,7 @@ enum QemuDTDeviceInitReturnCode
     QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED, /* Another device which this device depends on needs to be initialized first */
     QEMUDT_DEVICE_INIT_UNKNOWN, /* This device is unknown and cannot be initialized */
     QEMUDT_DEVICE_INIT_ERROR, /* An error occured while initializing the device */
+    QEMUDT_DEVICE_INIT_NOTPRESENT, /* The user's configuration supresses this device.  */
 };
 
 struct QemuDT
@@ -52,6 +53,8 @@ struct QemuDTNode
     DeviceTreeNode dt_node;
     /** If the Qemu device has already been initialized. */
     bool is_initialized;
+    /** If this node should not be considered further. */
+    bool ignore;
     /** Pointer to the Qemu device. */
     DeviceState *qemu_device;
     /**
@@ -70,6 +73,7 @@ QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt);
 int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt);
 int hwdtb_qemudt_invoke_init(QemuDT *qemu_dt);
 QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemuDT, uint32_t phandle);
+int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, uint64_t *value);
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, void *opaque);
 void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, void *opaque);
 
