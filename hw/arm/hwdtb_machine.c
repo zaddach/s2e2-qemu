@@ -18,51 +18,10 @@
 
 /* Board init.  */
 
-static struct arm_boot_info integrator_binfo = {
+static struct arm_boot_info dtbmachine_binfo = {
     .loader_start = 0x0,
     .board_id = 0x113,
 };
-
-
-//static bool dt_handle_dt_node_device_type(const DeviceTreeNode *node, const char *device_type)
-//{
-//    fprintf(stderr, "Node %s - Found device type: %s\n", dt_node_get_name(node), device_type);
-//    return 0;
-//}
-//
-//static bool dt_handle_dt_node_compatible(const DeviceTreeNode *node, const char *compatibility)
-//{
-//    fprintf(stderr, "Node %s - Found compatibility: %s\n", dt_node_get_name(node), compatibility);
-//    return 0;
-//}
-//
-//static dt_handle_sysbus(const DeviceTreeNode *node)
-//{
-//
-//
-//}
-//
-//static void dtbmachine_fdt_print_node(DeviceTreeNode *node)
-//{
-//    for (int i = 0; i < node->depth; ++i) {
-//        fprintf(stdout, "  ");
-//    }
-//
-//    fprintf(stdout, "%s\n", dt_node_get_name(node));
-//
-//    DeviceTreeNode child;
-//    int err = dt_node_get_first_child(node, &child);
-//    while (!err) {
-//        dtbmachine_fdt_print_node(&child);
-//        err = dt_node_get_next_child(node, &child);
-//    }
-//}
-//
-//static void dtbmachine_fdt_print(FlattenedDeviceTree *fdt)
-//{
-//    fprintf(stdout, "Device tree:\n");
-//    dtbmachine_fdt_print_node(dt_fdt_get_root(fdt));
-//}
 
 static void dtb_machine_init(MachineState *machine)
 {
@@ -100,10 +59,31 @@ static void dtb_machine_init(MachineState *machine)
 
     hwdtb_qemudt_invoke_init(qemu_dt);
 
-//    dtbmachine_fdt_print(&fdt);
-//    dt_fdt_walk(&fdt);
+    /* If kernel command line was not passed, try to get it from device tree */
+    if (!kernel_cmdline) {
+        DeviceTreeNode chosen;
+        DeviceTreeProperty bootargs;
 
-    exit(1);
+        int err = hwdtb_fdt_node_from_path(&fdt, "/chosen", &chosen);
+        if (!err) {
+            err = hwdtb_fdt_node_get_property(&chosen, "bootargs", &bootargs);
+            if (!err) {
+                kernel_cmdline = (const char *) bootargs.data;
+            }
+        }
+    }
+
+    /* Find device node of first processor */
+    QemuDTNode *cpu = hwdtb_qemudt_find_path(qemu_dt, "/cpus/cpu@0");
+    assert(cpu);
+
+    dtbmachine_binfo.kernel_filename = kernel_filename;
+    dtbmachine_binfo.kernel_cmdline = kernel_cmdline;
+    dtbmachine_binfo.initrd_filename = initrd_filename;
+    dtbmachine_binfo.dtb_filename = machine->dtb;
+//    dtbmachine_binfo.ram_size = machine->ram_size;
+
+    arm_load_kernel((ARMCPU *) cpu->qemu_device, &dtbmachine_binfo);
 }
 
 static QEMUMachine dtb_machine = {
