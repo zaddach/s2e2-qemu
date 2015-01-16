@@ -83,7 +83,8 @@ struct QemuDTNode
 QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt);
 int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt);
 void hwdtb_qemudt_invoke_init(QemuDT *qemu_dt);
-QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemuDT, uint32_t phandle);
+QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemu_dt, uint32_t phandle);
+QemuDTNode *hwdtb_qemudt_find_path(QemuDT *qemu_dt, const char *path);
 int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, uint64_t *value);
 void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque);
 void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque);

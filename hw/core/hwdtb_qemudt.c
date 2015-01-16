@@ -278,6 +278,36 @@ static QemuDTNode * hwdtb_qemudt_node_find_phandle(QemuDTNode *node, uint32_t ph
     return found_node;
 }
 
+static QemuDTNode * hwdtb_qemudt_node_find_path(QemuDTNode *node, const char *path)
+{
+    const char *end = strchr(path, '/');
+    unsigned len = end ? end - path : strlen(path);
+
+    if (len == 0) {
+        return node;
+    }
+    else {
+        QemuDTNode *child = node->first_child;
+        while (child) {
+            if (!strncmp(hwdtb_fdt_node_get_name(&node->dt_node), path, len)) {
+                return hwdtb_qemudt_node_find_path(child, path[len] == '/' ? path + len + 1 : path + len);
+            }
+
+            child = child->next_sibling;
+        }
+    }
+
+    return NULL;
+}
+
+QemuDTNode *hwdtb_qemudt_find_path(QemuDT *qemu_dt, const char *path)
+{
+    assert(qemu_dt);
+    assert(path);
+    assert(path[0] == '/');
+    return hwdtb_qemudt_node_find_path(qemu_dt->root, path + 1);
+}
+
 QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt)
 {
     QemuDT *qemu_dt = g_new0(QemuDT, 1);
