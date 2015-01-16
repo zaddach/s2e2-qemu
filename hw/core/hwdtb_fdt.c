@@ -11,6 +11,12 @@
 
 #include <libfdt.h>
 
+#define CPU_MAX_NAME_LEN 20
+#define PROPERTY_DEVICE_TYPE "device_type"
+#define PROPERTY_COMPATIBLE "compatible"
+#define DEVICE_TYPE_CPU "cpu"
+
+
 bool hwdtb_fdt_property_get_next_string(const DeviceTreeProperty *property, DeviceTreePropertyIterator *itr, const char ** data, int * len)
 {
     assert(property);
@@ -275,7 +281,7 @@ bool hwdtb_fdt_node_is_compatible(const DeviceTreeNode *node, const char *compat
     int err;
     bool has_next;
 
-    err = hwdtb_fdt_node_get_property(node, "compatible", &prop_compatible);
+    err = hwdtb_fdt_node_get_property(node, PROPERTY_COMPATIBLE, &prop_compatible);
     if (err) {
         return false;
     }
@@ -495,3 +501,68 @@ int hwdtb_fdt_add_memory(FlattenedDeviceTree *fdt, uint64_t region_address, uint
     return 0;
 }
 
+int hwdtb_fdt_node_add_subnode(DeviceTreeNode *parent, const char *name, DeviceTreeNode *new_node)
+{
+    assert(parent);
+    assert(name);
+    assert(new_node);
+
+    int offset = fdt_add_subnode(parent->fdt->data, parent->offset, name);
+    if (offset < 0) {
+        return offset;
+    }
+
+    new_node->depth = parent->depth + 1;
+    new_node->offset = offset;
+    new_node->fdt = parent->fdt;
+
+    return 0;
+}
+
+int hwdtb_fdt_add_cpu(FlattenedDeviceTree *fdt, const char *compatible)
+{
+    assert(fdt);
+    assert(compatible);
+
+    DeviceTreeNode cpus;
+    int err = hwdtb_fdt_node_add_subnode(&fdt->root, "cpus", &cpus);
+    if (err == -FDT_ERR_EXISTS) {
+        err = hwdtb_fdt_node_from_path(fdt, "/cpus", &cpus);
+        if (err) {
+            return err;
+        }
+    }
+    else if (err != 0) {
+        return err;
+    }
+
+    /* Count number of CPUs already registered */
+    int num_cpus = 0;
+    DeviceTreeNode child;
+    err = hwdtb_fdt_node_get_first_child(&cpus, &child);
+    while (!err) {
+        num_cpus += 1;
+        err = hwdtb_fdt_node_get_next_child(&cpus, &child);
+    }
+
+    DeviceTreeNode cpu;
+    char cpu_name[CPU_MAX_NAME_LEN];
+
+    snprintf(cpu_name, CPU_MAX_NAME_LEN, "cpu@%d", (int) num_cpus);
+    err = hwdtb_fdt_node_add_subnode(&cpus, cpu_name, &cpu);
+    if (err) {
+        return err;
+    }
+
+    err = fdt_setprop(fdt->data, cpu.offset, PROPERTY_COMPATIBLE, compatible, strlen(compatible) + 1);
+    if (err < 0) {
+        return err;
+    }
+
+    err = fdt_setprop(fdt->data, cpu.offset, PROPERTY_DEVICE_TYPE, DEVICE_TYPE_CPU, strlen(DEVICE_TYPE_CPU) + 1);
+    if (err < 0) {
+        return err;
+    }
+
+    return 0;
+}

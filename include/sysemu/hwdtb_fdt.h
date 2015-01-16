@@ -145,4 +145,8 @@ int hwdtb_fdt_node_from_path(const FlattenedDeviceTree *fdt, const char *path, D
  * @param size Size of the memory region to add.
  */
 int hwdtb_fdt_add_memory(FlattenedDeviceTree *fdt, uint64_t address, uint64_t size);
+
+int hwdtb_fdt_node_add_subnode(DeviceTreeNode *parent, const char *name, DeviceTreeNode *new_node);
+
+int hwdtb_fdt_add_cpu(FlattenedDeviceTree *fdt, const char *compatible);
 #endif /* HWDTB_FDT_H_ */
