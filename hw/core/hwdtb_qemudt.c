@@ -16,11 +16,12 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt);
 static bool hwdtb_qemudt_node_map_init_by_string_property(QemuDTNode *node, const char *property_name, GHashTable *mapping);
 static QemuDTNode * hwdtb_qemudt_node_from_dt_node(QemuDT *qemu_dt, const DeviceTreeNode *dt_node);
 static int hwdtb_qemudt_node_map_init(QemuDTNode *node);
-static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, void *opaque, GHashTable **mapping);
+static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, GHashTable **mapping);
 
 typedef struct InitData
 {
     QemuDTDeviceInitFunc init_func;
+    const char *init_func_name;
     void *opaque;
 } InitData;
 
@@ -50,7 +51,7 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt)
     qemudt_node->first_child = NULL;
     qemudt_node->next_sibling = NULL;
     qemudt_node->is_initialized = false;
-    qemudt_node->ignore = false;
+
     qemudt_node->init_function = NULL;
     qemudt_node->init_function_opaque = NULL;
     qemudt_node->qemu_device = NULL;
@@ -155,7 +156,7 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
     return 0;
 }
 
-static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, void *opaque, GHashTable **mapping)
+static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, GHashTable **mapping)
 {
     assert(mapping);
 
@@ -170,6 +171,7 @@ static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, void *op
 
     init_data->init_func = func;
     init_data->opaque = opaque;
+    init_data->init_func_name = func_name;
 
     g_hash_table_insert(*mapping, (gpointer) name, init_data);
 }
@@ -299,13 +301,13 @@ int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, ui
     }
 }
 
-void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, void *opaque)
+void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque)
 {
-    hwdtb_register(name, func, opaque, &compatibility_table);
+    hwdtb_register(name, func, func_name, opaque, &compatibility_table);
 }
 
-void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, void *opaque)
+void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque)
 {
-    hwdtb_register(name, func, opaque, &device_type_table);
+    hwdtb_register(name, func, func_name, opaque, &device_type_table);
 }
 
