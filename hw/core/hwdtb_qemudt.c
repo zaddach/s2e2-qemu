@@ -31,6 +31,7 @@ typedef struct InitData
 
 GHashTable *compatibility_table = NULL;
 GHashTable *device_type_table = NULL;
+GHashTable *node_name_table = NULL;
 
 
 /**
@@ -159,6 +160,16 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
                     "device_type",
                     device_type_table,
                     QEMUDT_INITFN_SOURCE_DEVICE_TYPE);
+        }
+        if (!mapped) {
+            const char *node_name = hwdtb_fdt_node_get_name(&node->dt_node);
+            InitData *init_data = g_hash_table_lookup(node_name_table, node_name);
+            if (init_data) {
+                node->init_func = init_data->func;
+                node->init_func_opaque = init_data->opaque;
+                node->init_func_type = QEMUDT_INITFN_SOURCE_NODE_NAME;
+                mapped = true;
+            }
         }
 
         assert(!mapped || node->init_function);
@@ -289,7 +300,8 @@ static QemuDTNode * hwdtb_qemudt_node_find_path(QemuDTNode *node, const char *pa
     else {
         QemuDTNode *child = node->first_child;
         while (child) {
-            if (!strncmp(hwdtb_fdt_node_get_name(&node->dt_node), path, len)) {
+            const char *child_name = hwdtb_fdt_node_get_name(&node->dt_node);
+            if (child_name && !strncmp(child_name, path, len)) {
                 return hwdtb_qemudt_node_find_path(child, path[len] == '/' ? path + len + 1 : path + len);
             }
 
@@ -385,13 +397,19 @@ int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, ui
     }
 }
 
-void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque)
+void hwdtb_register_handler(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, QemuDTInitFunctionSource type)
 {
-    hwdtb_register(name, func, func_name, opaque, &compatibility_table);
-}
-
-void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque)
-{
-    hwdtb_register(name, func, func_name, opaque, &device_type_table);
+    switch(type) {
+    case QEMUDT_INITFN_SOURCE_DEVICE_TYPE:
+        hwdtb_register(name, func, func_name, opaque, &device_type_table);
+        break;
+    case QEMUDT_INITFN_SOURCE_COMPATIBILITY:
+        hwdtb_register(name, func, func_name, opaque, &compatibility_table);
+        break;
+    case QEMUDT_INITFN_SOURCE_NODE_NAME:
+        hwdtb_register(name, func, func_name, opaque, &node_name_table);
+        break;
+    default:
+        assert(false);
 }
 

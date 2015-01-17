@@ -140,7 +140,11 @@ const char *hwdtb_fdt_node_get_name(const DeviceTreeNode *node)
 {
     int len;
     const char *name = fdt_get_name(node->fdt->data, node->offset, &len);
-    //TODO: Error checking
+    if (!name) {
+        fprintf(stderr, "ERROR: Cannot get name of node: %s", fdt_strerror(len));
+        return NULL;
+    }
+
     return name;
 }
 

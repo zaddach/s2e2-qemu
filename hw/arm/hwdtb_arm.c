@@ -361,11 +361,16 @@ static QemuDTDeviceInitReturnCode hwdtb_init_device_type_memory(QemuDTNode *node
     return QEMUDT_DEVICE_INIT_SUCCESS;
 }
 
+hwdtb_declare_node_name("cpus", hwdtb_init_compatibility_simple_bus, NULL)
+
 hwdtb_declare_device_type("memory", hwdtb_init_device_type_memory, NULL)
 
 hwdtb_declare_compatibility("arm,versatile-fpga-irq", hwdtb_init_compatibility_arm_versatile_fpga_irq, NULL)
+/* All nodes that are supposed to be skipped, but their children to be explored are treated as simple_bus */
 hwdtb_declare_compatibility("simple-bus", hwdtb_init_compatibility_simple_bus, NULL)
 hwdtb_declare_compatibility("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
+hwdtb_declare_compatibility("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
+
 hwdtb_declare_compatibility("arm,pl011", hwdtb_init_compatibility_sysbus_device, (void *) "pl011")
 hwdtb_declare_compatibility("arm,pl031", hwdtb_init_compatibility_sysbus_device, (void *) "pl031")
 hwdtb_declare_compatibility("arm,pl061", hwdtb_init_compatibility_sysbus_device, (void *) "pl061")

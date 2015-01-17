@@ -29,7 +29,8 @@ enum QemuDTDeviceInitReturnCode
 enum QemuDTInitFunctionSource
 {
     QEMUDT_INITFN_SOURCE_COMPATIBILITY,
-    QEMUDT_INITFN_SOURCE_DEVICE_TYPE
+    QEMUDT_INITFN_SOURCE_DEVICE_TYPE,
+    QEMUDT_INITFN_SOURCE_NODE_NAME
 };
 
 struct QemuDT
@@ -86,8 +87,7 @@ void hwdtb_qemudt_invoke_init(QemuDT *qemu_dt);
 QemuDTNode *hwdtb_qemudt_find_phandle(QemuDT *qemu_dt, uint32_t phandle);
 QemuDTNode *hwdtb_qemudt_find_path(QemuDT *qemu_dt, const char *path);
 int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, uint64_t *value);
-void hwdtb_register_compatibility(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque);
-void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque);
+void hwdtb_register_handler(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, QemuDTInitFunctionSource type);
 
 /*
  * GCC, Microsoft C and clang support the __COUNTER__ macro.
@@ -97,28 +97,25 @@ void hwdtb_register_device_type(const char *name, QemuDTDeviceInitFunc func, con
 #define __COUNTER__ __LINE__
 #endif
 
-#define hwdtb_declare_compatibility(compatibility_name, function, opaque) \
-        hwdtb_declare_compatibility_inner(compatibility_name, function, #function, opaque, __COUNTER__)
+#define hwdtb_declare_compatible_handler(name, function, opaque) \
+        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_COMPATIBILITY)
 
-#define hwdtb_declare_compatibility_inner(compatibility_name, function, function_name, opaque, unique) \
-        hwdtb_declare_compatibility_inner_2(compatibility_name, function, function_name, opaque, unique)
+#define hwdtb_declare_device_type_handler(name, function, opaque) \
+        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_DEVICE_TYPE)
 
-#define hwdtb_declare_compatibility_inner_2(compatibility_name, function, function_name, opaque, unique) \
+#define hwdtb_declare_node_name_handler(name, function, opaque) \
+        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_DEVICE_TYPE)
+
+#define hwdtb_declare_handler(name, function, opaque, type) \
+        hwdtb_declare_handler_inner(name, function, #function, opaque, type, #type, __COUNTER__)
+
+#define hwdtb_declare_handler_inner(name, function, function_name, opaque, type, type_name, unique) \
+        hwdtb_declare_handler_inner_2(name, function, function_name, opaque, type, type_name, unique)
+
+#define hwdtb_declare_compatibility_inner_2(name, function, function_name, opaque, type, type_name, unique) \
     static void __attribute__((constructor))                             \
-    register_ ## function ## _ ## unique ## _compatibility()  {       \
-        hwdtb_register_compatibility(compatibility_name, function, function_name, opaque); \
-    }
-
-#define hwdtb_declare_device_type(device_type_name, function, opaque) \
-        hwdtb_declare_device_type_inner(device_type_name, function, #function, opaque, __COUNTER__)
-
-#define hwdtb_declare_device_type_inner(device_type_name, function, function_name, opaque, unique) \
-        hwdtb_declare_device_type_inner_2(device_type_name, function, function_name, opaque, unique)
-
-#define hwdtb_declare_device_type_inner_2(device_type_name, function, function_name, opaque, unique)     \
-    static void __attribute__((constructor))                             \
-    register_ ## function ## _ ## unique ## _device_type()  {    \
-        hwdtb_register_device_type(device_type_name, function, function_name, opaque);     \
+    register_ ## function ## _ ## type_name ## _ ## unique ## _handler()  {       \
+        hwdtb_register_handler(name, function, function_name, opaque, type); \
     }
 
 #endif /* HWDTB_QEMUDT_H_ */
