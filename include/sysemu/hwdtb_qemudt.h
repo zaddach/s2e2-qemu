@@ -16,6 +16,7 @@ typedef struct QemuDT QemuDT;
 typedef struct QemuDTNode QemuDTNode;
 typedef QemuDTDeviceInitReturnCode (*QemuDTDeviceInitFunc)(QemuDTNode *, void *);
 typedef enum QemuDTInitFunctionSource QemuDTInitFunctionSource;
+typedef struct QemuDTDeviceInitFuncInfo QemuDTDeviceInitFuncInfo;
 
 enum QemuDTDeviceInitReturnCode
 {
@@ -30,7 +31,8 @@ enum QemuDTInitFunctionSource
 {
     QEMUDT_INITFN_SOURCE_COMPATIBILITY,
     QEMUDT_INITFN_SOURCE_DEVICE_TYPE,
-    QEMUDT_INITFN_SOURCE_NODE_NAME
+    QEMUDT_INITFN_SOURCE_NODE_NAME,
+    QEMUDT_INITFN_SOURCE_NUM_ENTRIES
 };
 
 struct QemuDT
@@ -70,15 +72,16 @@ struct QemuDTNode
      * If no init function is set, no mapping exists for the device and the node
      * should be ignored.
      */
-    QemuDTDeviceInitFunc init_function;
-    /**
-     * Argument for the initialization function.
-     */
-    void *init_function_opaque;
-    /** Name of the init function (for logging purposes) */
-    const char *init_function_name;
-    /** Which criterion was used when finding the init function */
-    QemuDTInitFunctionSource init_function_source;
+    QemuDTDeviceInitFuncInfo *init_info;
+};
+
+
+struct QemuDTDeviceInitFuncInfo
+{
+    QemuDTDeviceInitFunc init_func;
+    const char *func_name;
+    void *opaque;
+    QemuDTInitFunctionSource init_source;
 };
 
 QemuDT * hwdtb_qemudt_new(FlattenedDeviceTree *fdt);
@@ -98,23 +101,23 @@ void hwdtb_register_handler(const char *name, QemuDTDeviceInitFunc func, const c
 #endif
 
 #define hwdtb_declare_compatible_handler(name, function, opaque) \
-        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_COMPATIBILITY)
+        hwdtb_declare_handler(name, function, opaque, QEMUDT_INITFN_SOURCE_COMPATIBILITY)
 
 #define hwdtb_declare_device_type_handler(name, function, opaque) \
-        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_DEVICE_TYPE)
+        hwdtb_declare_handler(name, function, opaque, QEMUDT_INITFN_SOURCE_DEVICE_TYPE)
 
 #define hwdtb_declare_node_name_handler(name, function, opaque) \
-        hwdtb_declare_handler(name, function, #function, opaque, QEMUDT_INITFN_SOURCE_DEVICE_TYPE)
+        hwdtb_declare_handler(name, function, opaque, QEMUDT_INITFN_SOURCE_NODE_NAME)
 
 #define hwdtb_declare_handler(name, function, opaque, type) \
-        hwdtb_declare_handler_inner(name, function, #function, opaque, type, #type, __COUNTER__)
+        hwdtb_declare_handler_inner(name, function, #function, opaque, type, __COUNTER__)
 
-#define hwdtb_declare_handler_inner(name, function, function_name, opaque, type, type_name, unique) \
-        hwdtb_declare_handler_inner_2(name, function, function_name, opaque, type, type_name, unique)
+#define hwdtb_declare_handler_inner(name, function, function_name, opaque, type, unique) \
+        hwdtb_declare_handler_inner_2(name, function, function_name, opaque, type, unique)
 
-#define hwdtb_declare_compatibility_inner_2(name, function, function_name, opaque, type, type_name, unique) \
+#define hwdtb_declare_handler_inner_2(name, function, function_name, opaque, type, unique) \
     static void __attribute__((constructor))                             \
-    register_ ## function ## _ ## type_name ## _ ## unique ## _handler()  {       \
+    register_ ## function ## _ ## type ## _ ## unique ## _handler()  {       \
         hwdtb_register_handler(name, function, function_name, opaque, type); \
     }
 

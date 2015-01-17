@@ -215,7 +215,7 @@ bool hwdtb_fdt_property_get_next_uint(const DeviceTreeProperty *property, Device
     if (data) {
         switch (size) {
         case 1: *data = (uint64_t) *(const uint8_t *) itr->position; break;
-        case 2: *data = (uint64_t) fdt16_to_cpu(*(const uint16_t *) itr->position); break;
+        case 2: assert(false); /* Not implemented */; break;
         case 4: *data = (uint64_t) fdt32_to_cpu(*(const uint32_t *) itr->position); break;
         case 8: *data = (uint64_t) fdt64_to_cpu(*(const uint64_t *) itr->position); break;
         default: assert(false);
@@ -234,7 +234,7 @@ uint64_t hwdtb_fdt_property_get_uint(const DeviceTreeProperty *property, int siz
 
     switch (size) {
     case 1: return *(const uint8_t *) property->data;
-    case 2: return fdt16_to_cpu(*(const uint16_t *) property->data);
+    case 2: assert(false) /* Not Implemented */; break;
     case 4: return fdt32_to_cpu(*(const uint32_t *) property->data);
     case 8: return fdt64_to_cpu(*(const uint64_t *) property->data);
     default: assert(false);

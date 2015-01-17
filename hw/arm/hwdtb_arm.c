@@ -361,27 +361,27 @@ static QemuDTDeviceInitReturnCode hwdtb_init_device_type_memory(QemuDTNode *node
     return QEMUDT_DEVICE_INIT_SUCCESS;
 }
 
-hwdtb_declare_node_name("cpus", hwdtb_init_compatibility_simple_bus, NULL)
+hwdtb_declare_node_name_handler("cpus", hwdtb_init_compatibility_simple_bus, NULL)
 
-hwdtb_declare_device_type("memory", hwdtb_init_device_type_memory, NULL)
+hwdtb_declare_device_type_handler("memory", hwdtb_init_device_type_memory, NULL)
 
-hwdtb_declare_compatibility("arm,versatile-fpga-irq", hwdtb_init_compatibility_arm_versatile_fpga_irq, NULL)
+hwdtb_declare_compatible_handler("arm,versatile-fpga-irq", hwdtb_init_compatibility_arm_versatile_fpga_irq, NULL)
 /* All nodes that are supposed to be skipped, but their children to be explored are treated as simple_bus */
-hwdtb_declare_compatibility("simple-bus", hwdtb_init_compatibility_simple_bus, NULL)
-hwdtb_declare_compatibility("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
-hwdtb_declare_compatibility("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
+hwdtb_declare_compatible_handler("simple-bus", hwdtb_init_compatibility_simple_bus, NULL)
+hwdtb_declare_compatible_handler("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
+hwdtb_declare_compatible_handler("arm,amba-bus", hwdtb_init_compatibility_simple_bus, NULL)
 
-hwdtb_declare_compatibility("arm,pl011", hwdtb_init_compatibility_sysbus_device, (void *) "pl011")
-hwdtb_declare_compatibility("arm,pl031", hwdtb_init_compatibility_sysbus_device, (void *) "pl031")
-hwdtb_declare_compatibility("arm,pl061", hwdtb_init_compatibility_sysbus_device, (void *) "pl061")
-hwdtb_declare_compatibility("arm,pl080", hwdtb_init_compatibility_sysbus_device, (void *) "pl080")
-hwdtb_declare_compatibility("arm,pl110", hwdtb_init_compatibility_sysbus_device, (void *) "pl110")
-hwdtb_declare_compatibility("arm,pl180", hwdtb_init_compatibility_sysbus_device, (void *) "pl181")
-hwdtb_declare_compatibility("arm,sp804", hwdtb_init_compatibility_sysbus_device, (void *) "sp804")
-hwdtb_declare_compatibility("arm,pl050", hwdtb_init_compatibility_pl050, NULL)
-hwdtb_declare_compatibility("smsc,lan91c111", hwdtb_init_compatilibility_smsc_lan91c111, NULL);
+hwdtb_declare_compatible_handler("arm,pl011", hwdtb_init_compatibility_sysbus_device, (void *) "pl011")
+hwdtb_declare_compatible_handler("arm,pl031", hwdtb_init_compatibility_sysbus_device, (void *) "pl031")
+hwdtb_declare_compatible_handler("arm,pl061", hwdtb_init_compatibility_sysbus_device, (void *) "pl061")
+hwdtb_declare_compatible_handler("arm,pl080", hwdtb_init_compatibility_sysbus_device, (void *) "pl080")
+hwdtb_declare_compatible_handler("arm,pl110", hwdtb_init_compatibility_sysbus_device, (void *) "pl110")
+hwdtb_declare_compatible_handler("arm,pl180", hwdtb_init_compatibility_sysbus_device, (void *) "pl181")
+hwdtb_declare_compatible_handler("arm,sp804", hwdtb_init_compatibility_sysbus_device, (void *) "sp804")
+hwdtb_declare_compatible_handler("arm,pl050", hwdtb_init_compatibility_pl050, NULL)
+hwdtb_declare_compatible_handler("smsc,lan91c111", hwdtb_init_compatilibility_smsc_lan91c111, NULL)
 
 
-hwdtb_declare_compatibility("arm,arm1136", hwdtb_init_compatibility_cpu, (void *) "arm1136")
-hwdtb_declare_compatibility("arm,integrator-cp-timer", hwdtb_init_compatibility_arm_integrator_cp_timer, NULL);
+hwdtb_declare_compatible_handler("arm,arm1136", hwdtb_init_compatibility_cpu, (void *) "arm1136")
+hwdtb_declare_compatible_handler("arm,integrator-cp-timer", hwdtb_init_compatibility_arm_integrator_cp_timer, NULL)
 

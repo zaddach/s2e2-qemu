@@ -16,23 +16,12 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt);
 static bool hwdtb_qemudt_node_map_init_by_string_property(
         QemuDTNode *node,
         const char *property_name,
-        GHashTable *mapping,
         QemuDTInitFunctionSource init_func_source);
 static QemuDTNode * hwdtb_qemudt_node_from_dt_node(QemuDT *qemu_dt, const DeviceTreeNode *dt_node);
 static int hwdtb_qemudt_node_map_init(QemuDTNode *node);
-static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, GHashTable **mapping);
+static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, QemuDTInitFunctionSource source);
 
-typedef struct InitData
-{
-    QemuDTDeviceInitFunc init_func;
-    const char *init_func_name;
-    void *opaque;
-} InitData;
-
-GHashTable *compatibility_table = NULL;
-GHashTable *device_type_table = NULL;
-GHashTable *node_name_table = NULL;
-
+GHashTable *mapping_tables[QEMUDT_INITFN_SOURCE_NUM_ENTRIES] = {0};
 
 /**
  * Get pointer to one free QemuDTNode in the preallocated storage.
@@ -57,8 +46,7 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt)
     qemudt_node->next_sibling = NULL;
     qemudt_node->is_initialized = false;
 
-    qemudt_node->init_function = NULL;
-    qemudt_node->init_function_opaque = NULL;
+    qemudt_node->init_info = NULL;
     qemudt_node->qemu_device = NULL;
     qemudt_node->qemu_dt = qemu_dt;
 
@@ -68,10 +56,15 @@ static QemuDTNode * hwdtb_qemudt_node_alloc(QemuDT *qemu_dt)
 static bool hwdtb_qemudt_node_map_init_by_string_property(
         QemuDTNode *node,
         const char *property_name,
-        GHashTable *mapping,
         QemuDTInitFunctionSource init_func_source)
 {
+    assert(node);
+    assert(property_name);
+    assert(init_func_source >= 0 && init_func_source < QEMUDT_INITFN_SOURCE_NUM_ENTRIES);
     DEBUG_PRINTF("Mapping property %s of node %s\n", property_name, hwdtb_fdt_node_get_name(&node->dt_node));
+
+
+    GHashTable *mapping = mapping_tables[init_func_source];
 
     if (!mapping) {
         return false;
@@ -96,12 +89,9 @@ static bool hwdtb_qemudt_node_map_init_by_string_property(
         DEBUG_PRINTF("trying to find handler for string %s\n", string);
 
         //Check the compatibility database for a match
-        InitData *init_data = (InitData *) g_hash_table_lookup(mapping, string);
-        if (init_data && init_data->init_func) {
-            node->init_function = init_data->init_func;
-            node->init_function_opaque = init_data->opaque;
-            node->init_function_source = init_func_source;
-            node->init_function_name = init_data->init_func_name;
+        QemuDTDeviceInitFuncInfo *init_info = (QemuDTDeviceInitFuncInfo *) g_hash_table_lookup(mapping, string);
+        if (init_info) {
+            node->init_info = init_info;
             return true;
         }
     }
@@ -149,30 +139,17 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
     //Do not try to initialize the root node
     if (node->parent) {
         /* Map device node to qemu initialization function */
-        bool mapped = hwdtb_qemudt_node_map_init_by_string_property(
-                node,
-                "compatible",
-                compatibility_table,
-                QEMUDT_INITFN_SOURCE_COMPATIBILITY);
-        if (!mapped) {
-            mapped = hwdtb_qemudt_node_map_init_by_string_property(
-                    node,
-                    "device_type",
-                    device_type_table,
-                    QEMUDT_INITFN_SOURCE_DEVICE_TYPE);
+        hwdtb_qemudt_node_map_init_by_string_property(node, "compatible", QEMUDT_INITFN_SOURCE_COMPATIBILITY);
+        if (!node->init_info) {
+            hwdtb_qemudt_node_map_init_by_string_property(node, "device_type", QEMUDT_INITFN_SOURCE_DEVICE_TYPE);
         }
-        if (!mapped) {
+        if (!node->init_info) {
             const char *node_name = hwdtb_fdt_node_get_name(&node->dt_node);
-            InitData *init_data = g_hash_table_lookup(node_name_table, node_name);
-            if (init_data) {
-                node->init_func = init_data->func;
-                node->init_func_opaque = init_data->opaque;
-                node->init_func_type = QEMUDT_INITFN_SOURCE_NODE_NAME;
-                mapped = true;
+            QemuDTDeviceInitFuncInfo *init_info = g_hash_table_lookup(mapping_tables[QEMUDT_INITFN_SOURCE_NODE_NAME], node_name);
+            if (init_info) {
+                node->init_info = init_info;
             }
         }
-
-        assert(!mapped || node->init_function);
     }
 
     /* Do the same for all children */
@@ -185,9 +162,11 @@ static int hwdtb_qemudt_node_map_init(QemuDTNode *node)
     return 0;
 }
 
-static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, GHashTable **mapping)
+static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, QemuDTInitFunctionSource source)
 {
-    assert(mapping);
+    assert(name);
+    assert(source >= 0 && source < QEMUDT_INITFN_SOURCE_NUM_ENTRIES);
+    GHashTable **mapping = &mapping_tables[source];
 
     if (!*mapping) {
         *mapping = g_hash_table_new(g_str_hash, g_str_equal);
@@ -195,14 +174,15 @@ static void hwdtb_register(const char *name, QemuDTDeviceInitFunc func, const ch
 
     assert(*mapping);
 
-    InitData *init_data = g_new0(InitData, 1);
-    assert(init_data);
+    QemuDTDeviceInitFuncInfo *init_info = g_new0(QemuDTDeviceInitFuncInfo, 1);
+    assert(init_info);
 
-    init_data->init_func = func;
-    init_data->opaque = opaque;
-    init_data->init_func_name = func_name;
+    init_info->init_func = func;
+    init_info->opaque = opaque;
+    init_info->func_name = func_name;
+    init_info->init_source = source;
 
-    g_hash_table_insert(*mapping, (gpointer) name, init_data);
+    g_hash_table_insert(*mapping, (gpointer) name, init_info);
 }
 
 
@@ -218,24 +198,26 @@ static bool hwdtb_qemudt_node_invoke_init(QemuDTNode *node)
     bool revisit = false;
 
     //TODO: unfinished
-
-    if (node->init_function && !node->is_initialized && !node->ignore) {
-        QemuDTDeviceInitReturnCode ret = node->init_function(node, node->init_function_opaque);
+    if (node->init_info && !node->is_initialized && !node->ignore && !node->init_info->init_func) {
+        node->ignore = true;
+    }
+    else if (node->init_info && !node->is_initialized && !node->ignore) {
+        QemuDTDeviceInitReturnCode ret = node->init_info->init_func(node, node->init_info->opaque);
         switch (ret) {
         case QEMUDT_DEVICE_INIT_SUCCESS:
-            fprintf(stderr, "INFO: Successfully initialized device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            fprintf(stderr, "INFO: Successfully initialized device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_info->func_name);
             node->is_initialized = true;
             break;
         case QEMUDT_DEVICE_INIT_ERROR:
-            fprintf(stderr, "ERROR: Failed to initialize device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            fprintf(stderr, "ERROR: Failed to initialize device tree node %s in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_info->func_name);
             node->ignore = true;
             break;
         case QEMUDT_DEVICE_INIT_NOTPRESENT:
-            fprintf(stderr, "INFO: Device tree node %s marked to be skipped in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            fprintf(stderr, "INFO: Device tree node %s marked to be skipped in function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_info->func_name);
             node->ignore = true;
             break;
         case QEMUDT_DEVICE_INIT_UNKNOWN:
-            fprintf(stderr, "WARN: Unknown device in device tree node %s, init function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_function_name);
+            fprintf(stderr, "WARN: Unknown device in device tree node %s, init function %s\n", hwdtb_fdt_node_get_name(&node->dt_node), node->init_info->func_name);
             node->ignore = true;
             break;
         case QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED:
@@ -399,17 +381,9 @@ int hwdtb_qemudt_get_clock_frequency(QemuDT *qemu_dt, uint32_t clock_phandle, ui
 
 void hwdtb_register_handler(const char *name, QemuDTDeviceInitFunc func, const char *func_name, void *opaque, QemuDTInitFunctionSource type)
 {
-    switch(type) {
-    case QEMUDT_INITFN_SOURCE_DEVICE_TYPE:
-        hwdtb_register(name, func, func_name, opaque, &device_type_table);
-        break;
-    case QEMUDT_INITFN_SOURCE_COMPATIBILITY:
-        hwdtb_register(name, func, func_name, opaque, &compatibility_table);
-        break;
-    case QEMUDT_INITFN_SOURCE_NODE_NAME:
-        hwdtb_register(name, func, func_name, opaque, &node_name_table);
-        break;
-    default:
-        assert(false);
+    assert(name);
+    assert(type >= 0 && type < QEMUDT_INITFN_SOURCE_NUM_ENTRIES);
+
+    hwdtb_register(name, func, func_name, opaque, type);
 }
 
