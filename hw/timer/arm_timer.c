@@ -416,7 +416,7 @@ static const MemoryRegionOps integrator_cp_timer_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-int integrator_cp_timer_init(SysBusDevice *dev)
+static int integrator_cp_timer_init(SysBusDevice *dev)
 {
     integrator_cp_timer_state *s = INTEGRATOR_CP_TIMER(dev);
 
@@ -429,11 +429,6 @@ int integrator_cp_timer_init(SysBusDevice *dev)
 
     return 0;
 }
-
-static Property arm_timer_properties[] = {
-    DEFINE_PROP_UINT32("freq", integrator_cp_timer_state, freq, 1000000),
-    DEFINE_PROP_END_OF_LIST(),
-};
 
 static void integrator_cp_timer_class_init(ObjectClass *klass, void *data)
 {
