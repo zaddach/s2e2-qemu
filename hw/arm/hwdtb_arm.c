@@ -73,7 +73,7 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatilibility_smsc_lan91c111(Qemu
 
     /* If device is not connected to the outside, we do not need to add it to the platform. */
     if (!nd_table[instance_index].used) {
-        return QEMUDT_DEVICE_INIT_NOTPRESENT;
+        return QEMUDT_DEVICE_INIT_IGNORE;
     }
 
     QemuDTNode *interrupt_controller;
@@ -133,11 +133,13 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_pl050(QemuDTNode *nod
         ret = hwdtb_init_compatibility_sysbus_device(node, (void *) "pl050_mouse");
         break;
     default:
-        fprintf(stderr, "WARNING: More than two pl050 devices specified in the dtb, do not know what to connect them to");
-        ret = QEMUDT_DEVICE_INIT_NOTPRESENT;
+        fprintf(stderr, "WARNING: More than two pl050 devices specified in the dtb, do not know what to connect them to\n");
+        ret = QEMUDT_DEVICE_INIT_IGNORE;
     }
 
-    instance_index += 1;
+    if (ret == QEMUDT_DEVICE_INIT_SUCCESS) {
+    	instance_index += 1;
+    }
     return ret;
 }
 
@@ -188,9 +190,6 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_sysbus_device(QemuDTN
         has_next = hwdtb_fdt_property_get_next_uint(&prop_interrupts, &propitr_interrupts, num_interrupt_cells * 4, &irq_num);
         assert(irq_num >= 0 && irq_num <= (uint64_t)(int)-1);
 
-        irq = qdev_get_gpio_in(interrupt_controller->qemu_device, irq_num);
-
-        has_next = hwdtb_fdt_property_get_next_uint(&prop_interrupts, &propitr_interrupts, num_interrupt_cells * 4, &irq_num);
         irq = qdev_get_gpio_in(interrupt_controller->qemu_device, irq_num);
         sysbus_connect_irq(sysbus_device, n, irq);
         n += 1;
@@ -249,6 +248,7 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_arm_versatile_fpga_ir
 {
     static int instance_index = 0;
 
+    QemuDTNode *cpu_node;
     DeviceTreeProperty prop_interrupt_parent;
     DeviceTreeProperty prop_interrupt_controller;
     uint64_t address;
@@ -261,13 +261,16 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_arm_versatile_fpga_ir
     err = hwdtb_fdt_node_get_property(&node->dt_node, "interrupt-parent", &prop_interrupt_parent);
     if (!err) {
         /* Currently we don't want the secondary interrupt controller. */
-        return QEMUDT_DEVICE_INIT_NOTPRESENT;
+    	const char *node_name = hwdtb_fdt_node_get_name(&node->dt_node);
+    	fprintf(stderr, "WARN: Ignoring secondary interrupt controller %s\n", node_name);
+        return QEMUDT_DEVICE_INIT_IGNORE;
     }
 
     /* test if we already have a primary interrupt controller */
     if (instance_index > 0) {
         const char *node_name = hwdtb_fdt_node_get_name(&node->dt_node);
         fprintf(stderr, "WARN: Rejecting interrupt controller %s because there is already a primary interrupt controller\n", node_name);
+        return QEMUDT_DEVICE_INIT_IGNORE;
     }
 
     /* Just for fun test for the interrupt-controller property (which should be present) */
@@ -280,9 +283,16 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_arm_versatile_fpga_ir
     err = hwdtb_fdt_node_get_property_reg(&node->dt_node, &address, &size);
     assert(!err);
 
+    cpu_node = hwdtb_qemudt_find_path(node->qemu_dt, "/cpus/cpu@0");
+    assert(cpu_node);
+
+    if (!cpu_node->is_initialized || !cpu_node->qemu_device) {
+        return QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED;
+    }
+
     node->qemu_device = sysbus_create_varargs(TYPE_INTEGRATOR_PIC, address,
-                                    qdev_get_gpio_in(/*DEVICE(cpu)*/ NULL, ARM_CPU_IRQ),
-                                    qdev_get_gpio_in(/*DEVICE(cpu)*/ NULL, ARM_CPU_FIQ),
+                                    qdev_get_gpio_in(DEVICE(cpu_node->qemu_device), ARM_CPU_IRQ),
+                                    qdev_get_gpio_in(DEVICE(cpu_node->qemu_device), ARM_CPU_FIQ),
                                     NULL);
 
     instance_index += 1;
@@ -361,7 +371,12 @@ static QemuDTDeviceInitReturnCode hwdtb_init_device_type_memory(QemuDTNode *node
     return QEMUDT_DEVICE_INIT_SUCCESS;
 }
 
-hwdtb_declare_node_name_handler("cpus", hwdtb_init_compatibility_simple_bus, NULL)
+static QemuDTDeviceInitReturnCode hwdtb_init_nodename_cpus(QemuDTNode *node, void *opaque)
+{
+    return QEMUDT_DEVICE_INIT_SUCCESS;
+};
+
+hwdtb_declare_node_name_handler("cpus", hwdtb_init_nodename_cpus, NULL)
 
 hwdtb_declare_device_type_handler("memory", hwdtb_init_device_type_memory, NULL)
 

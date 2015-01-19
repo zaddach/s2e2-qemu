@@ -24,7 +24,7 @@ enum QemuDTDeviceInitReturnCode
     QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED, /* Another device which this device depends on needs to be initialized first */
     QEMUDT_DEVICE_INIT_UNKNOWN, /* This device is unknown and cannot be initialized */
     QEMUDT_DEVICE_INIT_ERROR, /* An error occured while initializing the device */
-    QEMUDT_DEVICE_INIT_NOTPRESENT, /* The user's configuration supresses this device.  */
+    QEMUDT_DEVICE_INIT_IGNORE, /* The user's configuration supresses this device.  */
 };
 
 enum QemuDTInitFunctionSource
@@ -53,6 +53,8 @@ struct QemuDTNode
 {
     /** Pointer to the QemuDT tree this node belongs to. */
     QemuDT *qemu_dt;
+    /** Node name (mainly for debugging) */
+    const char *name;
     /** Pointer to the parent node. */
     QemuDTNode *parent;
     /** Pointer to the first child in the doubly-linked list of children. */

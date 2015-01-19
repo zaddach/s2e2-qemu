@@ -18,6 +18,29 @@
 
 /* Board init.  */
 
+static void hwdtb_qemudt_node_print(QemuDTNode *node)
+{
+    for (int i = 0; i < node->dt_node.depth; i++) {
+        fprintf(stderr, "\t");
+    }
+
+    const char *name = hwdtb_fdt_node_get_name(&node->dt_node);
+
+    fprintf(stderr, "%s\n", name);
+
+    QemuDTNode *child = node->first_child;
+    while (child) {
+        hwdtb_qemudt_node_print(child);
+        child = child->next_sibling;
+    }
+}
+
+static void hwdtb_qemudt_print(QemuDT *qemu_dt) 
+{
+   hwdtb_qemudt_node_print(qemu_dt->root);
+}
+
+
 static struct arm_boot_info dtbmachine_binfo = {
     .loader_start = 0x0,
     .board_id = 0x113,
@@ -55,6 +78,8 @@ static void dtb_machine_init(MachineState *machine)
     QemuDT *qemu_dt = hwdtb_qemudt_new(&fdt);
     assert(qemu_dt);
 
+    hwdtb_qemudt_print(qemu_dt);
+
     hwdtb_qemudt_map_init_functions(qemu_dt);
 
     hwdtb_qemudt_invoke_init(qemu_dt);
@@ -76,6 +101,7 @@ static void dtb_machine_init(MachineState *machine)
     /* Find device node of first processor */
     QemuDTNode *cpu = hwdtb_qemudt_find_path(qemu_dt, "/cpus/cpu@0");
     assert(cpu);
+    assert(cpu->qemu_device);
 
     dtbmachine_binfo.kernel_filename = kernel_filename;
     dtbmachine_binfo.kernel_cmdline = kernel_cmdline;
