@@ -430,11 +430,18 @@ static int integrator_cp_timer_init(SysBusDevice *dev)
     return 0;
 }
 
+static Property integratorcp_timer_properties[] = {
+    DEFINE_PROP_UINT32("freq", integrator_cp_timer_state, freq, 1000000),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static void integrator_cp_timer_class_init(ObjectClass *klass, void *data)
 {
     SysBusDeviceClass *sdc = SYS_BUS_DEVICE_CLASS(klass);
+    DeviceClass *k = DEVICE_CLASS(klass);
 
     sdc->init = integrator_cp_timer_init;
+    k->props = integratorcp_timer_properties;
 }
 
 static const TypeInfo integrator_cp_timer_info = {
