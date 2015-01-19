@@ -300,6 +300,42 @@ static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_arm_versatile_fpga_ir
     return QEMUDT_DEVICE_INIT_SUCCESS;
 }
 
+
+static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_pl190(QemuDTNode *node, void *opaque)
+{
+    QemuDTNode *cpu_node;
+    DeviceTreeProperty prop_interrupt_controller;
+    uint64_t address;
+    uint64_t size;
+    int err;
+
+    /* Just for fun test for the interrupt-controller property (which should be present) */
+    err = hwdtb_fdt_node_get_property(&node->dt_node, "interrupt-controller", &prop_interrupt_controller);
+    if (err) {
+        const char *node_name = hwdtb_fdt_node_get_name(&node->dt_node);
+        fprintf(stderr, "WARN: found interrupt controller node %s without interrupt-controller property\n", node_name);
+    }
+
+    err = hwdtb_fdt_node_get_property_reg(&node->dt_node, &address, &size);
+    assert(!err);
+
+    cpu_node = hwdtb_qemudt_find_path(node->qemu_dt, "/cpus/cpu@0");
+    assert(cpu_node);
+
+    if (!cpu_node->is_initialized || !cpu_node->qemu_device) {
+        return QEMUDT_DEVICE_INIT_DEPENDENCY_NOT_INITIALIZED;
+    }
+
+    node->qemu_device = sysbus_create_varargs(TYPE_INTEGRATOR_PIC, address,
+                                    qdev_get_gpio_in(DEVICE(cpu_node->qemu_device), ARM_CPU_IRQ),
+                                    qdev_get_gpio_in(DEVICE(cpu_node->qemu_device), ARM_CPU_FIQ),
+                                    NULL);
+
+    node->is_initialized = true;
+    return QEMUDT_DEVICE_INIT_SUCCESS;
+}
+
+
 static QemuDTDeviceInitReturnCode hwdtb_init_compatibility_cpu(QemuDTNode *node, void *opaque)
 {
     assert(node);
@@ -388,15 +424,16 @@ hwdtb_declare_compatible_handler("arm,amba-bus", hwdtb_init_compatibility_simple
 
 hwdtb_declare_compatible_handler("arm,pl011", hwdtb_init_compatibility_sysbus_device, (void *) "pl011")
 hwdtb_declare_compatible_handler("arm,pl031", hwdtb_init_compatibility_sysbus_device, (void *) "pl031")
-hwdtb_declare_compatible_handler("arm,pl061", hwdtb_init_compatibility_sysbus_device, (void *) "pl061")
+//hwdtb_declare_compatible_handler("arm,pl061", hwdtb_init_compatibility_sysbus_device, (void *) "pl061")
 hwdtb_declare_compatible_handler("arm,pl080", hwdtb_init_compatibility_sysbus_device, (void *) "pl080")
 hwdtb_declare_compatible_handler("arm,pl110", hwdtb_init_compatibility_sysbus_device, (void *) "pl110")
-hwdtb_declare_compatible_handler("arm,pl180", hwdtb_init_compatibility_sysbus_device, (void *) "pl181")
+//TODO: interrupt-extended needs to be implemented for this
+//hwdtb_declare_compatible_handler("arm,pl180", hwdtb_init_compatibility_sysbus_device, (void *) "pl181")
 hwdtb_declare_compatible_handler("arm,sp804", hwdtb_init_compatibility_sysbus_device, (void *) "sp804")
+hwdtb_declare_compatible_handler("arm,versatile-sic", hwdtb_init_compatibility_sysbus_device, (void *) "versatilepb_sic")
 hwdtb_declare_compatible_handler("arm,pl050", hwdtb_init_compatibility_pl050, NULL)
 hwdtb_declare_compatible_handler("smsc,lan91c111", hwdtb_init_compatilibility_smsc_lan91c111, NULL)
-
-
+hwdtb_declare_compatible_handler("arm,versatile-vic", hwdtb_init_compatibility_pl190, NULL);
 hwdtb_declare_compatible_handler("arm,arm1136", hwdtb_init_compatibility_cpu, (void *) "arm1136")
 hwdtb_declare_compatible_handler("arm,integrator-cp-timer", hwdtb_init_compatibility_arm_integrator_cp_timer, NULL)
 
