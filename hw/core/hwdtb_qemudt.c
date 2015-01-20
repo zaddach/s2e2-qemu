@@ -347,15 +347,29 @@ int hwdtb_qemudt_map_init_functions(QemuDT *qemu_dt)
     return hwdtb_qemudt_node_map_init(qemu_dt->root);
 }
 
+
+#define MAX_ITERATIONS 100
 void hwdtb_qemudt_invoke_init(QemuDT *qemu_dt)
 {
     assert(qemu_dt);
 
     /* Perform a fixed point iteration until all nodes including their dependencies are initialized. */
     bool done = false;
+    int num_iterations = 0;
     while (!done) {
-    	fprintf(stderr, "Next iteration of device initialization ...\n");
+    	fprintf(stderr, "DEBUG: Iteration %d of device initialization ...\n", (int) num_iterations);
         done = hwdtb_qemudt_node_invoke_init(qemu_dt->root);
+
+        /*HACK: The assumption that everything is initialized after MAX_ITERATIONS iterations has no
+         *      algorithmic or logical base. In theory one would need to check if something in the tree has changed
+         *      between iterations, and abort in case a fixed point has been reached where not all neccessary devices
+         *      have been initialized.
+         */
+        if (num_iterations > MAX_ITERATIONS) {
+            fprintf(stderr, "ERROR: Could not initialize all devices in %d iterations. Aborting.", (int) MAX_ITERATIONS);
+            exit(1);
+        }
+        num_iterations += 1;
     }
 }
 
