@@ -122,12 +122,13 @@ static QemuDTNode * hwdtb_qemudt_node_from_dt_node(QemuDT *qemu_dt, const Device
 
     /* Create children */
     DeviceTreeNode dt_child;
+    QemuDTNode **next_child_ptr = &qemudt_node->first_child;
     int err = hwdtb_fdt_node_get_first_child(dt_node, &dt_child);
     while (err >= 0) {
         QemuDTNode *qemudt_child = hwdtb_qemudt_node_from_dt_node(qemu_dt, &dt_child);
-        qemudt_child->next_sibling = qemudt_node->first_child;
+        *next_child_ptr = qemudt_child;
+        next_child_ptr = &qemudt_child->next_sibling;
         qemudt_child->parent = qemudt_node;
-        qemudt_node->first_child = qemudt_child;
 
         err = hwdtb_fdt_node_get_next_child(dt_node, &dt_child);
     }
