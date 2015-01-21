@@ -69,7 +69,7 @@ void tcgplugin_helper_post_qemu_st_i64(CPUArchState *env, target_ulong addr, uin
 			TCG_CALL_DUMMY_ARG, 5, args);                                           \
 }
 
-#define TCGPLUGIN_GEN_HELER_INTERCEPT_ST(type)                                      \
+#define TCGPLUGIN_GEN_HELPER_INTERCEPT_ST(type)                                      \
 static inline void glue(tcgplugin_gen_helper_intercept_st_, type)(                  \
 		TCGContext *s,                                                              \
 		TCGv addr,                                                                  \
@@ -109,40 +109,21 @@ static inline void glue(tcgplugin_gen_helper_post_qemu_st_, type)(              
 		TCG_CALL_DUMMY_ARG, 5, args);                                               \
 }
 
-
-//static inline void tcgplugin_gen_helper_intercept_ld_i32(
-//				TCGContext *s,
-//				TCGv val,
-//				TCGv_i32 addr,
-//				TCGv_i32 idx,
-//				TCGv_i32 memop)
-//{
-//	TCGArg args[4] = {
-//			GET_TCGV_PTR(tcgplugin_cpu_env),
-//			GET_TCGV(addr),
-//			GET_TCGV_I32(idx),
-//			GET_TCGV_I32(memop)};
-//
-//			tcg_gen_callN(s,
-//					      (void *) tcgplugin_helper_intercept_qemu_ld_i2, type),
-//						  glue(GET_TCGV_, type)(val), 4, args);                     \
-//}
-
 TCGPLUGIN_GEN_HELPER_INTERCEPT_LD(i32)
 TCGPLUGIN_GEN_HELPER_INTERCEPT_LD(i64)
 
 TCGPLUGIN_GEN_HELPER_POST_LD(i32)
 TCGPLUGIN_GEN_HELPER_POST_LD(i64)
 
-TCGPLUGIN_GEN_HELER_INTERCEPT_ST(i32)
-TCGPLUGIN_GEN_HELER_INTERCEPT_ST(i64)
+TCGPLUGIN_GEN_HELPER_INTERCEPT_ST(i32)
+TCGPLUGIN_GEN_HELPER_INTERCEPT_ST(i64)
 
 TCGPLUGIN_GEN_HELPER_POST_ST(i32)
 TCGPLUGIN_GEN_HELPER_POST_ST(i64)
 
 #undef TCGPLUGIN_GEN_HELPER_INTERCEPT_LD
 #undef TCGPLUGIN_GEN_HELPER_POST_LD
-#undef TCGPLUGIN_GEN_HELER_INTERCEPT_ST
+#undef TCGPLUGIN_GEN_HELPER_INTERCEPT_ST
 #undef TCGPLUGIN_GEN_HELPER_POST_ST
 #undef GET_TCGV
 
