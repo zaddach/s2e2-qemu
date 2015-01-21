@@ -575,146 +575,74 @@ void tcg_plugin_guest_arch_init(TCGv_ptr cpu_env)
 
 uint32_t tcgplugin_helper_intercept_qemu_ld_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t memop)
 {
-	return (uint32_t) tcgplugin_helper_intercept_qemu_ld_i64(env, addr, idx, memop);
+    if (tpi.intercept_memory_load) {
+        tpi.env = env;
+        return tpi.intercept_memory_load(&tpi, addr, idx, memop);
+    }
+    else {
+        return (uint32_t) plgapi_qemu_ld(env, addr, idx, memop);
+    }
 }
 
 uint64_t tcgplugin_helper_intercept_qemu_ld_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t memop)
 {
-#ifdef CONFIG_SOFTMMU
-	switch (memop)
-	{
-	case MO_UB:   return helper_ret_ldub_mmu(env, addr, idx, GETRA());
-	case MO_SB:   return helper_ret_ldsb_mmu(env, addr, idx, GETRA());
-
-	case MO_LEUW: return helper_le_lduw_mmu(env, addr, idx, GETRA());
-	case MO_LEUL: return helper_le_ldul_mmu(env, addr, idx, GETRA());
-	case MO_LEQ:  return helper_le_ldq_mmu(env, addr, idx, GETRA());
-	case MO_LESW: return helper_le_ldsw_mmu(env, addr, idx, GETRA());
-	case MO_LESL: return helper_le_ldul_mmu(env, addr, idx, GETRA());
-
-	case MO_BEUW: return helper_be_lduw_mmu(env, addr, idx, GETRA());
-	case MO_BEUL: return helper_be_ldul_mmu(env, addr, idx, GETRA());
-	case MO_BEQ:  return helper_be_ldq_mmu(env, addr, idx, GETRA());
-	case MO_BESW: return helper_be_ldsw_mmu(env, addr, idx, GETRA());
-	case MO_BESL: return helper_be_ldul_mmu(env, addr, idx, GETRA());
-	default:
-		printf("ERROR: unknown memory operation %d\n", memop);
-		tcg_abort();
-		break;
-	}
-#else
-	//TODO: This code has never been tested, possible bugs
-	//TODO: target_ulong does not necessarily have the same size as a host pointer. What to do?
-	// How do -user systems work if the target and the host have different pointer sizes?
-	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
-			__func__, __FILE__, __LINE__);
-	tcg_abort();
-
-	switch (memop)
-	{
-	case MO_UB:   return *((uint8_t *) addr);
-	case MO_SB:   return (uint64_t)((int64_t) *((int8_t *) addr));
-
-	case MO_LEUW: return le16toh(*((uint16_t *) addr));
-	case MO_LEUL: return le32toh(*((uint32_t *) addr));
-	case MO_LEQ:  return le64toh(*((uint64_t *) addr));
-	case MO_LESW: return (uint64_t)((int64_t) le16toh(*((int16_t *) addr)));
-	case MO_LESL: return (uint64_t)((int64_t) le32toh(*((int32_t *) addr)));
-
-	case MO_BEUW: return be16toh(*((uint16_t *) addr));
-	case MO_BEUL: return be32toh(*((uint32_t *) addr));
-	case MO_BEQ:  return be64toh(*((uint64_t *) addr));
-	case MO_BESW: return (uint64_t) ((int64_t) be16toh(*((int16_t *) addr)));
-	case MO_BESL: return (uint64_t) ((int64_t) be32toh(*((int32_t *) addr)));
-	default:
-		printf("ERROR: unknown memory operation %d\n", memop);
-		tcg_abort();
-		break;
-	}
-#endif /* CONFIG_SOFTMMU */
+    if (tpi.intercept_memory_load) {
+        tpi.env = env;
+        return tpi.intercept_memory_load(&tpi, addr, idx, memop);
+    }
+    else {
+        return plgapi_qemu_ld(env, addr, idx, memop);
+    }
 }
 
 void tcgplugin_helper_post_qemu_ld_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
 {
-	tcgplugin_helper_post_qemu_ld_i64(env, addr, idx, val, memop);
+    if (tpi.monitor_memory_access) {
+        tpi.env = env;
+        tpi.monitor_memory_access(&tpi, addr, idx, val, memop, MEMORY_ACCESS_TYPE_READ);
+    }
 }
 
 void tcgplugin_helper_post_qemu_ld_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
+    if (tpi.monitor_memory_access) {
+        tpi.env = env;
+        tpi.monitor_memory_access(&tpi, addr, idx, val, memop, MEMORY_ACCESS_TYPE_READ);
+    }
 }
 
 void tcgplugin_helper_intercept_qemu_st_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
 {
-	tcgplugin_helper_intercept_qemu_st_i64(env, addr, idx, val, memop);
+    if (tpi.intercept_memory_store) {
+        tpi.env = env;
+        tpi.intercept_memory_store(&tpi, addr, idx, val, memop);
+    }
 }
 
 void tcgplugin_helper_intercept_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
-#ifdef CONFIG_SOFTMMU
-	switch (memop)
-	{
-	case MO_UB:   helper_ret_stb_mmu(env, addr, val, idx, GETRA()); break;
-
-	case MO_LEUW: helper_le_stw_mmu(env, addr, val, idx, GETRA());  break;
-	case MO_LEUL: helper_le_stl_mmu(env, addr, val, idx, GETRA());  break;
-	case MO_LEQ:  helper_le_stq_mmu(env, addr, val, idx, GETRA());  break;
-
-	case MO_BEUW: helper_be_stw_mmu(env, addr, val, idx, GETRA());  break;
-	case MO_BEUL: helper_be_stl_mmu(env, addr, val, idx, GETRA());  break;
-	case MO_BEQ:  helper_be_stq_mmu(env, addr, val, idx, GETRA());  break;
-	default:
-		printf("ERROR: unknown memory operation %d\n", memop);
-		tcg_abort();
-		break;
-	}
-#else
-
-#ifdef HOST_WORDS_BIGENDIAN
-#error This code has been written with little endian hosts in mind only. Possible bugs lurk.
-#endif
-
-	//TODO: This code has never been tested, possible bugs
-	//TODO: target_ulong does not necessarily have the same size as a host pointer. What to do?
-	// How do -user systems work if the target and the host have different pointer sizes?
-	printf("ERROR: Code in %s (%s:%d) has never been tested. Remove this warning and test before use.\n",
-			__func__, __FILE__, __LINE__);
-	tcg_abort();
-
-	switch (memop)
-	{
-	case MO_UB:   *((uint8_t *) addr) = (uint8_t) val;                       break;
-	case MO_SB:   *((uint8_t *) addr) = (uint8_t) ((int8_t) val);            break;
-
-	case MO_LEUW: *((uint16_t *) addr) = htole16((uint16_t) val);            break;
-	case MO_LEUL: *((uint32_t *) addr) = htole32((uint32_t) val);            break;
-	case MO_LEQ:  *((uint64_t *) addr) = htole64(val);                       break;
-	case MO_LESW: *((uint16_t *) addr) = htole16((uint16_t) val);            break;
-	case MO_LESL: *((uint32_t *) addr) = htole32((uint32_t) val);            break;
-
-	case MO_BEUW: *((uint16_t *) addr) = htobe16((uint16_t) val);            break;
-	case MO_BEUL: *((uint32_t *) addr) = htobe32((uint32_t) val);            break;
-	case MO_BEQ:  *((uint64_t *) addr) = htobe64(val);                       break;
-	case MO_BESW: *((uint16_t *) addr) = htobe16((uint16_t) val);            break;
-	case MO_BESL: *((uint32_t *) addr) = htobe32((uint32_t) val);            break;
-	default:
-		printf("ERROR: unknown memory operation %d\n", memop);
-		tcg_abort();
-		break;
-	}
-#endif /* CONFIG_SOFTMMU */
+    if (tpi.intercept_memory_store) {
+        tpi.env = env;
+        tpi.intercept_memory_store(&tpi, addr, idx, val, memop);
+    }
 }
 
 
 void tcgplugin_helper_post_qemu_st_i32(CPUArchState *env, target_ulong addr, uint32_t idx, uint32_t val, uint32_t memop)
 {
+    if (tpi.monitor_memory_access) {
+        tpi.env = env;
+        tpi.monitor_memory_access(&tpi, addr, idx, val, memop, MEMORY_ACCESS_TYPE_WRITE);
+    }
 	tcgplugin_helper_post_qemu_st_i64(env, addr, idx, val, memop);
 }
 
 void tcgplugin_helper_post_qemu_st_i64(CPUArchState *env, target_ulong addr, uint32_t idx, uint64_t val, uint32_t memop)
 {
-//#ifdef TARGET_ARM
-//	printf("ST at 0x%0" PRIx32 "\n", (uint32_t) ((CPUARMState *) env)->regs[15]);
-//#endif
+    if (tpi.monitor_memory_access) {
+        tpi.env = env;
+        tpi.monitor_memory_access(&tpi, addr, idx, val, memop, MEMORY_ACCESS_TYPE_WRITE);
+    }
 }
 
 void tcgplugin_shutdown_request(int signal, pid_t pid)

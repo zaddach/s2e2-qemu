@@ -34,7 +34,24 @@ void plgapi_register_helper(TCGContext *s, void *func, const char *name, unsigne
  */
 const char *plgapi_get_helper_name(TCGContext *s, void *helper);
 
+/**
+ * Load a value from Qemu's guest's memory.
+ * @param env CPU state.
+ * @param virt_addr Virtual address of the value to load.
+ * @param mmu_idx Index of the MMU to load from.
+ * @param memop Value size specification.
+ */
+uint64_t plgapi_qemu_ld(CPUArchState *env, uint64_t virt_addr, uint32_t mmu_index, uint32_t memop);
 
+/**
+ * Store a value to Qemu's guest's memory.
+ * @param env CPU state.
+ * @param virt_addr Virtual address where to store the value.
+ * @param mmu_idx Index of the MMU to use.
+ * @param value Value to store.
+ * @param memop Value size specification.
+ */
+void plgapi_qemu_st(CPUArchState *env, uint64_t virt_addr, uint32_t mmu_index, uint64_t value, uint32_t memop);
 
 
 #endif /* TCG_PLUGIN_API_H_ */

@@ -1,7 +1,6 @@
 /*
- * QEMU TCG plugin support.
- *
  * Copyright (C) 2011 STMicroelectronics
+ * Copyright (C) 2014-2015 EURECOM
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -22,6 +21,15 @@
  * ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
+ *
+ * SPDX-license-identifier: MIT
+ */
+
+/**
+ * TCG Plugin support.
+ *
+ * @author Jonas Zaddach <zaddach@eurecom.fr>
+ * @license MIT
  */
 
 #ifndef TCG_PLUGIN_H
@@ -40,6 +48,14 @@
 #else
 #define MAKE_TCGV MAKE_TCGV_I64
 #endif
+
+typedef enum MemoryAccessTypeEnum MemoryAccessType;
+
+enum MemoryAccessTypeEnum
+{
+    MEMORY_ACCESS_TYPE_READ = 0,
+    MEMORY_ACCESS_TYPE_WRITE = 1
+};
 
 /***********************************************************************
  * Hooks inserted into QEMU here and there.
@@ -120,7 +136,9 @@ typedef void (* tpi_parse_cmdline_t)(const TCGPluginInterface *tpi, int argc, ch
 typedef void (* tpi_tb_alloc)(const TCGPluginInterface *tpi, TranslationBlock *tb);
 typedef void (* tpi_tb_free)(const TCGPluginInterface *tpi, TranslationBlock *tb);
 typedef void (* tpi_tb_flush)(const TCGPluginInterface *tpi, TCGContext *tcg_ctx, CPUArchState *env);
-
+typedef void (* tpi_monitor_memory_access)(const TCGPluginInterface *tpi, uint64_t address, uint32_t mmu_idx, uint64_t val, uint32_t memop_size, MemoryAccessType type);
+typedef uint64_t (* tpi_intercept_memory_load)(const TCGPluginInterface *tpi, uint64_t address, uint32_t mmu_idx, uint32_t memop_size);
+typedef void (* tpi_intercept_memory_store)(const TCGPluginInterface *tpi, uint64_t address, uint32_t mmu_idx, uint64_t val, uint32_t memop_size);
 #define TPI_VERSION 3
 struct TCGPluginInterface
 {
@@ -160,6 +178,9 @@ struct TCGPluginInterface
     tpi_tb_alloc tb_alloc;
     tpi_tb_free tb_free;
     tpi_tb_flush tb_flush;
+    tpi_monitor_memory_access monitor_memory_access;
+    tpi_intercept_memory_load intercept_memory_load;
+    tpi_intercept_memory_store intercept_memory_store;
 };
 
 #define TPI_INIT_VERSION(tpi) do {                                     \
