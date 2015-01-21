@@ -259,6 +259,9 @@ void tcg_plugin_load(const char *name)
 
     tpi.is_generic = strcmp(tpi.guest, "any") == 0 && strcmp(tpi.mode, "any") == 0;
 
+    tcgplugin_monitor_qemu_ldst = tpi.do_monitor_memory_access;
+    tcgplugin_intercept_qemu_ldst = tpi.do_intercept_memory_access;
+
     if (getenv("TPI_VERBOSE")) {
         tpi.verbose = true;
         fprintf(tpi.output, "plugin: info: version = %d\n", tpi.version);
